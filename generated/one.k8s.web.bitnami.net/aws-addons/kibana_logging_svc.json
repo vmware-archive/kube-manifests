@@ -1,0 +1,28 @@
+{
+   "apiVersion": "v1",
+   "kind": "Service",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "k8s-app": "kibana-logging",
+         "kubernetes.io/cluster-service": "true",
+         "kubernetes.io/name": "Kibana",
+         "name": "kibana-logging"
+      },
+      "name": "kibana-logging",
+      "namespace": "kube-system"
+   },
+   "spec": {
+      "ports": [
+         {
+            "port": 5601,
+            "targetPort": "ui"
+         }
+      ],
+      "selector": {
+         "k8s-app": "kibana-logging",
+         "name": "kibana-logging"
+      },
+      "type": "ClusterIP"
+   }
+}

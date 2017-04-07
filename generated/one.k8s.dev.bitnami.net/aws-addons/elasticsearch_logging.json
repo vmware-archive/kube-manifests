@@ -1,0 +1,145 @@
+{
+   "apiVersion": "extensions/v1beta1",
+   "kind": "Deployment",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "k8s-app": "elasticsearch-logging",
+         "name": "elasticsearch-logging"
+      },
+      "name": "elasticsearch-logging",
+      "namespace": "kube-system"
+   },
+   "spec": {
+      "minReadySeconds": 30,
+      "replicas": 3,
+      "revisionHistoryLimit": 10,
+      "strategy": {
+         "rollingUpdate": {
+            "maxSurge": 0,
+            "maxUnavailable": 1
+         },
+         "type": "RollingUpdate"
+      },
+      "template": {
+         "metadata": {
+            "annotations": {
+               "prometheus.io/port": "9102",
+               "prometheus.io/scrape": "true",
+               "scheduler.alpha.kubernetes.io/affinity": "{\"podAntiAffinity\": {\"preferredDuringSchedulingIgnoredDuringExecution\": [{\"podAffinityTerm\": {\"labelSelector\": {\"matchLabels\": {\"k8s-app\": \"elasticsearch-logging\", \"name\": \"elasticsearch-logging\"}}, \"topologyKey\": \"failure-domain.beta.kubernetes.io/zone\"}, \"weight\": 50}, {\"podAffinityTerm\": {\"labelSelector\": {\"matchLabels\": {\"k8s-app\": \"elasticsearch-logging\", \"name\": \"elasticsearch-logging\"}}, \"topologyKey\": \"kubernetes.io/hostname\"}, \"weight\": 100}]}}"
+            },
+            "labels": {
+               "k8s-app": "elasticsearch-logging",
+               "name": "elasticsearch-logging"
+            }
+         },
+         "spec": {
+            "containers": [
+               {
+                  "args": [ ],
+                  "env": [
+                     {
+                        "name": "MINIMUM_MASTER_NODES",
+                        "value": "2"
+                     },
+                     {
+                        "name": "NAMESPACE",
+                        "valueFrom": {
+                           "fieldRef": {
+                              "apiVersion": "v1",
+                              "fieldPath": "metadata.namespace"
+                           }
+                        }
+                     }
+                  ],
+                  "image": "gcr.io/google_containers/elasticsearch:v2.4.1-2",
+                  "livenessProbe": {
+                     "failureThreshold": 6,
+                     "httpGet": {
+                        "path": "/_cluster/health?local=true",
+                        "port": "http"
+                     },
+                     "initialDelaySeconds": 300,
+                     "periodSeconds": 30
+                  },
+                  "name": "elasticsearch-logging",
+                  "ports": [
+                     {
+                        "containerPort": 9200,
+                        "name": "http"
+                     },
+                     {
+                        "containerPort": 9300,
+                        "name": "transport"
+                     }
+                  ],
+                  "readinessProbe": {
+                     "failureThreshold": 6,
+                     "httpGet": {
+                        "path": "/_cluster/health?local=true",
+                        "port": "http"
+                     },
+                     "initialDelaySeconds": 30,
+                     "periodSeconds": 30,
+                     "successThreshold": 2
+                  },
+                  "resources": {
+                     "limits": {
+                        "cpu": "1000m"
+                     },
+                     "requests": {
+                        "cpu": "100m"
+                     }
+                  },
+                  "stdin": false,
+                  "tty": false,
+                  "volumeMounts": [
+                     {
+                        "mountPath": "/data",
+                        "name": "storage"
+                     }
+                  ]
+               },
+               {
+                  "args": [
+                     "--es.all=false",
+                     "--es.timeout=20s",
+                     "--es.uri=http://localhost:9200/",
+                     "--web.listen-address=:9102",
+                     "--web.telemetry-path=/metrics"
+                  ],
+                  "command": [
+                     "elasticsearch_exporter"
+                  ],
+                  "env": [ ],
+                  "image": "crobox/elasticsearch-exporter",
+                  "livenessProbe": {
+                     "httpGet": {
+                        "path": "/",
+                        "port": "metrics"
+                     }
+                  },
+                  "name": "prom-exporter",
+                  "ports": [
+                     {
+                        "containerPort": 9102,
+                        "name": "metrics"
+                     }
+                  ],
+                  "stdin": false,
+                  "tty": false,
+                  "volumeMounts": [ ]
+               }
+            ],
+            "imagePullSecrets": [ ],
+            "terminationGracePeriodSeconds": 300,
+            "volumes": [
+               {
+                  "emptyDir": { },
+                  "name": "storage"
+               }
+            ]
+         }
+      }
+   }
+}

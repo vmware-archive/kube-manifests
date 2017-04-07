@@ -1,0 +1,54 @@
+#!/bin/sh
+#
+# Handy script to give you a temporary shell on a k8s cluster.
+#
+# Usage:
+#
+#   kubesh -l
+# Starts a new pod called shell-$USER.  The container will be
+# destroyed when this exits.
+#
+#   kubesh [cmd]
+# Connects to shell-$USER and runs $cmd, or /bin/bash.  The container
+# is not destroyed when this exits.
+#
+
+# Set this env var to name the pod something else
+: ${SHELL_POD:=shell-${LOGNAME}}
+# Set this env var to start a different image
+: ${SHELL_IMAGE:=debian:testing}
+# Inject http_proxy by default. Override to change, perhaps to ""
+# Note: there is no colon in the following ${foo=bar} construct!
+: ${SHELL_HTTP_PROXY=http://proxy.webcache:80/}
+
+: ${LOGNAME:=${USER}}
+: ${TZ:=$(cat /etc/timezone)}
+
+tty=
+test -t 0 && tty=--tty
+
+if [ "$1" = "-l" ]; then
+    attach=0
+    shift
+else
+    attach=1
+fi
+
+if [ $attach -ne 0 ]; then
+    if [ $# -eq 0 ]; then
+        set -- /bin/bash -l
+    fi
+    exec kubectl exec $SHELL_POD --stdin $tty -- "$@"
+else
+    exec kubectl run $SHELL_POD \
+         --image $SHELL_IMAGE \
+         --stdin $tty --attach \
+         --labels=user=$LOGNAME \
+         --restart=Never \
+         --rm \
+         ${SHELL_HTTP_PROXY:+--env=http_proxy=$SHELL_HTTP_PROXY} \
+         ${LOGNAME:+--env=LOGNAME=$LOGNAME} \
+         ${TERM:+--env=TERM=$TERM} \
+         ${TZ:+--env=TZ=$TZ} \
+         -- "$@"
+fi

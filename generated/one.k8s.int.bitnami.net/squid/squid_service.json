@@ -1,0 +1,24 @@
+{
+   "apiVersion": "v1",
+   "kind": "Service",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "name": "proxy"
+      },
+      "name": "proxy",
+      "namespace": "webcache"
+   },
+   "spec": {
+      "ports": [
+         {
+            "port": 80,
+            "targetPort": "proxy"
+         }
+      ],
+      "selector": {
+         "name": "proxy"
+      },
+      "type": "ClusterIP"
+   }
+}

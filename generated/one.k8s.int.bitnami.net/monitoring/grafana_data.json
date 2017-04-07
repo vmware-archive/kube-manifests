@@ -1,0 +1,22 @@
+{
+   "apiVersion": "v1",
+   "kind": "PersistentVolumeClaim",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "name": "grafana-data"
+      },
+      "name": "grafana-data",
+      "namespace": "monitoring"
+   },
+   "spec": {
+      "accessModes": [
+         "ReadWriteOnce"
+      ],
+      "resources": {
+         "requests": {
+            "storage": "20Gi"
+         }
+      }
+   }
+}

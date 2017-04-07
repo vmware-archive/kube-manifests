@@ -1,0 +1,42 @@
+{
+   "apiVersion": "extensions/v1beta1",
+   "kind": "Ingress",
+   "metadata": {
+      "annotations": {
+         "stable.k8s.psg.io/kcm.email": "sre@bitnami.com",
+         "stable.k8s.psg.io/kcm.enabled": "true",
+         "stable.k8s.psg.io/kcm.provider": "route53"
+      },
+      "labels": {
+         "name": "prometheus"
+      },
+      "name": "prometheus",
+      "namespace": "monitoring"
+   },
+   "spec": {
+      "rules": [
+         {
+            "host": "prometheus.k.web.bitnami.net",
+            "http": {
+               "paths": [
+                  {
+                     "backend": {
+                        "serviceName": "prometheus",
+                        "servicePort": 9090
+                     },
+                     "path": "/"
+                  }
+               ]
+            }
+         }
+      ],
+      "tls": [
+         {
+            "hosts": [
+               "prometheus.k.web.bitnami.net"
+            ],
+            "secretName": "prometheus-cert"
+         }
+      ]
+   }
+}

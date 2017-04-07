@@ -1,0 +1,78 @@
+{
+   "apiVersion": "extensions/v1beta1",
+   "kind": "DaemonSet",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "k8s-app": "fluentd-es",
+         "name": "fluentd-es"
+      },
+      "name": "fluentd-es",
+      "namespace": "kube-system"
+   },
+   "spec": {
+      "template": {
+         "metadata": {
+            "annotations": { },
+            "labels": {
+               "k8s-app": "fluentd-es",
+               "name": "fluentd-es"
+            }
+         },
+         "spec": {
+            "containers": [
+               {
+                  "args": [ ],
+                  "command": [
+                     "/bin/sh",
+                     "-c",
+                     "/usr/sbin/td-agent 2>&1 >> /var/log/fluentd.log"
+                  ],
+                  "env": [ ],
+                  "image": "gcr.io/google_containers/fluentd-elasticsearch:1.20",
+                  "name": "fluentd-es",
+                  "ports": [ ],
+                  "resources": {
+                     "limits": {
+                        "memory": "200Mi"
+                     },
+                     "requests": {
+                        "cpu": "100m",
+                        "memory": "200Mi"
+                     }
+                  },
+                  "stdin": false,
+                  "tty": false,
+                  "volumeMounts": [
+                     {
+                        "mountPath": "/var/lib/docker/containers",
+                        "name": "varlibdockercontainers",
+                        "readOnly": true
+                     },
+                     {
+                        "mountPath": "/var/log",
+                        "name": "varlog"
+                     }
+                  ]
+               }
+            ],
+            "imagePullSecrets": [ ],
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [
+               {
+                  "hostPath": {
+                     "path": "/var/lib/docker/containers"
+                  },
+                  "name": "varlibdockercontainers"
+               },
+               {
+                  "hostPath": {
+                     "path": "/var/log"
+                  },
+                  "name": "varlog"
+               }
+            ]
+         }
+      }
+   }
+}

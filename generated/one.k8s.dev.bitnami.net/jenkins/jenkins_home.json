@@ -1,0 +1,22 @@
+{
+   "apiVersion": "v1",
+   "kind": "PersistentVolumeClaim",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "name": "jenkins-home"
+      },
+      "name": "jenkins-home",
+      "namespace": "jenkins"
+   },
+   "spec": {
+      "accessModes": [
+         "ReadWriteOnce"
+      ],
+      "resources": {
+         "requests": {
+            "storage": "15Gi"
+         }
+      }
+   }
+}

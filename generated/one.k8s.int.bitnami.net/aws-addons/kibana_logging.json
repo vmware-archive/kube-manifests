@@ -1,0 +1,73 @@
+{
+   "apiVersion": "extensions/v1beta1",
+   "kind": "Deployment",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "k8s-app": "kibana-logging",
+         "name": "kibana-logging"
+      },
+      "name": "kibana-logging",
+      "namespace": "kube-system"
+   },
+   "spec": {
+      "minReadySeconds": 30,
+      "replicas": 1,
+      "revisionHistoryLimit": 10,
+      "strategy": {
+         "rollingUpdate": {
+            "maxSurge": "25%",
+            "maxUnavailable": "25%"
+         },
+         "type": "RollingUpdate"
+      },
+      "template": {
+         "metadata": {
+            "annotations": { },
+            "labels": {
+               "k8s-app": "kibana-logging",
+               "name": "kibana-logging"
+            }
+         },
+         "spec": {
+            "containers": [
+               {
+                  "args": [ ],
+                  "env": [
+                     {
+                        "name": "ELASTICSEARCH_URL",
+                        "value": "http://elasticsearch-logging:9200"
+                     },
+                     {
+                        "name": "KIBANA_BASE_URL",
+                        "value": ""
+                     }
+                  ],
+                  "image": "gcr.io/google_containers/kibana:v4.6.1",
+                  "name": "kibana-logging",
+                  "ports": [
+                     {
+                        "containerPort": 5601,
+                        "name": "ui"
+                     }
+                  ],
+                  "resources": {
+                     "limits": {
+                        "cpu": "100m"
+                     },
+                     "requests": {
+                        "cpu": "100m"
+                     }
+                  },
+                  "stdin": false,
+                  "tty": false,
+                  "volumeMounts": [ ]
+               }
+            ],
+            "imagePullSecrets": [ ],
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [ ]
+         }
+      }
+   }
+}

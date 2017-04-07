@@ -1,0 +1,123 @@
+{
+   "apiVersion": "extensions/v1beta1",
+   "kind": "Deployment",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "k8s-app": "heapster",
+         "kubernetes.io/cluster-service": "true",
+         "name": "heapster",
+         "version": "v1.2.0"
+      },
+      "name": "heapster",
+      "namespace": "kube-system"
+   },
+   "spec": {
+      "minReadySeconds": 30,
+      "replicas": 1,
+      "revisionHistoryLimit": 10,
+      "strategy": {
+         "rollingUpdate": {
+            "maxSurge": "25%",
+            "maxUnavailable": "25%"
+         },
+         "type": "RollingUpdate"
+      },
+      "template": {
+         "metadata": {
+            "annotations": {
+               "scheduler.alpha.kubernetes.io/critical-pod": "",
+               "scheduler.alpha.kubernetes.io/tolerations": "[{\"key\": \"CriticalAddonsOnly\", \"operator\": \"Exists\"}]"
+            },
+            "labels": {
+               "k8s-app": "heapster",
+               "kubernetes.io/cluster-service": "true",
+               "name": "heapster",
+               "version": "v1.2.0"
+            }
+         },
+         "spec": {
+            "containers": [
+               {
+                  "args": [
+                     "--source=kubernetes.summary_api:''"
+                  ],
+                  "command": [
+                     "/heapster"
+                  ],
+                  "env": [ ],
+                  "image": "gcr.io/google_containers/heapster:v1.2.0",
+                  "livenessProbe": {
+                     "httpGet": {
+                        "path": "/healthz",
+                        "port": 8082
+                     },
+                     "initialDelaySeconds": 180,
+                     "timeoutSeconds": 5
+                  },
+                  "name": "heapster",
+                  "ports": [ ],
+                  "stdin": false,
+                  "tty": false,
+                  "volumeMounts": [ ]
+               },
+               {
+                  "args": [
+                     "--container=heapster",
+                     "--cpu=80m",
+                     "--deployment=heapster",
+                     "--estimator=exponential",
+                     "--extra-cpu=0.5m",
+                     "--extra-memory=4Mi",
+                     "--memory=140Mi",
+                     "--poll-period=300000",
+                     "--threshold=5"
+                  ],
+                  "command": [
+                     "/pod_nanny"
+                  ],
+                  "env": [
+                     {
+                        "name": "MY_POD_NAME",
+                        "valueFrom": {
+                           "fieldRef": {
+                              "apiVersion": "v1",
+                              "fieldPath": "metadata.name"
+                           }
+                        }
+                     },
+                     {
+                        "name": "MY_POD_NAMESPACE",
+                        "valueFrom": {
+                           "fieldRef": {
+                              "apiVersion": "v1",
+                              "fieldPath": "metadata.namespace"
+                           }
+                        }
+                     }
+                  ],
+                  "image": "gcr.io/google_containers/addon-resizer:1.6",
+                  "name": "heapster-nanny",
+                  "ports": [ ],
+                  "resources": {
+                     "limits": {
+                        "cpu": "50m",
+                        "memory": "94160Ki"
+                     },
+                     "requests": {
+                        "cpu": "50m",
+                        "memory": "94160Ki"
+                     }
+                  },
+                  "stdin": false,
+                  "tty": false,
+                  "volumeMounts": [ ]
+               }
+            ],
+            "imagePullSecrets": [ ],
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [ ]
+         }
+      }
+   }
+}

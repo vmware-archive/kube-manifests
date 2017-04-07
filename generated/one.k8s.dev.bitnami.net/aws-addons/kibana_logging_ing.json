@@ -1,0 +1,42 @@
+{
+   "apiVersion": "extensions/v1beta1",
+   "kind": "Ingress",
+   "metadata": {
+      "annotations": {
+         "stable.k8s.psg.io/kcm.email": "sre@bitnami.com",
+         "stable.k8s.psg.io/kcm.enabled": "true",
+         "stable.k8s.psg.io/kcm.provider": "route53"
+      },
+      "labels": {
+         "name": "kibana-logging"
+      },
+      "name": "kibana-logging",
+      "namespace": "kube-system"
+   },
+   "spec": {
+      "rules": [
+         {
+            "host": "kibana.k.dev.bitnami.net",
+            "http": {
+               "paths": [
+                  {
+                     "backend": {
+                        "serviceName": "kibana-logging",
+                        "servicePort": 5601
+                     },
+                     "path": "/"
+                  }
+               ]
+            }
+         }
+      ],
+      "tls": [
+         {
+            "hosts": [
+               "kibana.k.dev.bitnami.net"
+            ],
+            "secretName": "kibana-logging-cert"
+         }
+      ]
+   }
+}

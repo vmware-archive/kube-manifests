@@ -1,0 +1,9 @@
+# This is mostly because-I-can, and probably a bad idea for an alert
+ALERT JenkinsWantsUpdate
+  IF jenkins_plugins_withUpdate > 0
+  FOR 24h
+  LABELS { severity = "notice" }
+  ANNOTATIONS {
+    summary = "Jenkins has updated plugins available",
+    description = "{{ $value }} plugins want an update",
+  }

@@ -1,0 +1,32 @@
+{
+   "apiVersion": "v1",
+   "kind": "Service",
+   "metadata": {
+      "annotations": {
+         "service.beta.kubernetes.io/aws-load-balancer-connection-draining-enabled": "true",
+         "service.beta.kubernetes.io/aws-load-balancer-connection-draining-timeout": "60",
+         "service.beta.kubernetes.io/aws-load-balancer-proxy-protocol": "*"
+      },
+      "labels": {
+         "name": "nginx-ingress"
+      },
+      "name": "nginx-ingress",
+      "namespace": "nginx-ingress"
+   },
+   "spec": {
+      "ports": [
+         {
+            "name": "http",
+            "port": 80
+         },
+         {
+            "name": "https",
+            "port": 443
+         }
+      ],
+      "selector": {
+         "name": "nginx-ingress"
+      },
+      "type": "LoadBalancer"
+   }
+}

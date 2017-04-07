@@ -1,0 +1,128 @@
+{
+   "apiVersion": "extensions/v1beta1",
+   "kind": "Deployment",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "name": "jenkins"
+      },
+      "name": "jenkins",
+      "namespace": "jenkins"
+   },
+   "spec": {
+      "minReadySeconds": 30,
+      "replicas": 1,
+      "revisionHistoryLimit": 10,
+      "strategy": {
+         "rollingUpdate": {
+            "maxSurge": 0,
+            "maxUnavailable": 1
+         },
+         "type": "RollingUpdate"
+      },
+      "template": {
+         "metadata": {
+            "annotations": { },
+            "labels": {
+               "name": "jenkins"
+            }
+         },
+         "spec": {
+            "containers": [
+               {
+                  "args": [ ],
+                  "env": [
+                     {
+                        "name": "JAVA_OPTS",
+                        "value": "-Xmx500m -Dhudson.slaves.NodeProvisioner.MARGIN=50 -Dhudson.slaves.NodeProvisioner.MARGIN0=0.85"
+                     },
+                     {
+                        "name": "JENKINS_OPTS",
+                        "valueFrom": {
+                           "secretKeyRef": {
+                              "key": "options",
+                              "name": "jenkins"
+                           }
+                        }
+                     },
+                     {
+                        "name": "http_proxy",
+                        "value": "http://proxy.webcache:80/"
+                     }
+                  ],
+                  "image": "jenkins:2.32.3",
+                  "lifecycle": {
+                     "preStop": {
+                        "httpGet": {
+                           "path": "/quietDown",
+                           "port": "ui"
+                        }
+                     }
+                  },
+                  "livenessProbe": {
+                     "failureThreshold": 6,
+                     "httpGet": {
+                        "path": "/login",
+                        "port": "ui"
+                     },
+                     "initialDelaySeconds": 120,
+                     "timeoutSeconds": 20
+                  },
+                  "name": "master",
+                  "ports": [
+                     {
+                        "containerPort": 50000,
+                        "name": "slaves"
+                     },
+                     {
+                        "containerPort": 8080,
+                        "name": "ui"
+                     }
+                  ],
+                  "readinessProbe": {
+                     "failureThreshold": 6,
+                     "httpGet": {
+                        "path": "/login",
+                        "port": "ui"
+                     },
+                     "initialDelaySeconds": 120,
+                     "successThreshold": 2,
+                     "timeoutSeconds": 20
+                  },
+                  "resources": {
+                     "limits": {
+                        "cpu": "1",
+                        "memory": "1000Mi"
+                     },
+                     "requests": {
+                        "cpu": "0.5",
+                        "memory": "500Mi"
+                     }
+                  },
+                  "stdin": false,
+                  "tty": false,
+                  "volumeMounts": [
+                     {
+                        "mountPath": "/var/jenkins_home",
+                        "name": "jenkinshome"
+                     }
+                  ]
+               }
+            ],
+            "imagePullSecrets": [ ],
+            "securityContext": {
+               "fsGroup": 1000
+            },
+            "terminationGracePeriodSeconds": 300,
+            "volumes": [
+               {
+                  "name": "jenkinshome",
+                  "persistentVolumeClaim": {
+                     "claimName": "jenkins-home"
+                  }
+               }
+            ]
+         }
+      }
+   }
+}

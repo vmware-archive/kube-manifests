@@ -1,0 +1,138 @@
+{
+   "apiVersion": "extensions/v1beta1",
+   "kind": "Deployment",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "name": "nginx-ingress"
+      },
+      "name": "nginx-ingress",
+      "namespace": "nginx-ingress"
+   },
+   "spec": {
+      "minReadySeconds": 30,
+      "replicas": 1,
+      "revisionHistoryLimit": 10,
+      "strategy": {
+         "rollingUpdate": {
+            "maxSurge": "25%",
+            "maxUnavailable": "25%"
+         },
+         "type": "RollingUpdate"
+      },
+      "template": {
+         "metadata": {
+            "annotations": {
+               "prometheus.io/path": "/metrics",
+               "prometheus.io/port": "9913",
+               "prometheus.io/scrape": "true"
+            },
+            "labels": {
+               "name": "nginx-ingress"
+            }
+         },
+         "spec": {
+            "containers": [
+               {
+                  "args": [
+                     "--default-backend-service=$(POD_NAMESPACE)/default-http-backend",
+                     "--nginx-configmap=$(POD_NAMESPACE)/nginx"
+                  ],
+                  "command": [
+                     "/nginx-ingress-controller"
+                  ],
+                  "env": [
+                     {
+                        "name": "POD_NAME",
+                        "valueFrom": {
+                           "fieldRef": {
+                              "apiVersion": "v1",
+                              "fieldPath": "metadata.name"
+                           }
+                        }
+                     },
+                     {
+                        "name": "POD_NAMESPACE",
+                        "valueFrom": {
+                           "fieldRef": {
+                              "apiVersion": "v1",
+                              "fieldPath": "metadata.namespace"
+                           }
+                        }
+                     }
+                  ],
+                  "image": "gcr.io/google_containers/nginx-ingress-controller:0.8.3",
+                  "livenessProbe": {
+                     "failureThreshold": 5,
+                     "httpGet": {
+                        "path": "/healthz",
+                        "port": 10254
+                     },
+                     "initialDelaySeconds": 10,
+                     "timeoutSeconds": 5
+                  },
+                  "name": "nginx-ingress-lb",
+                  "ports": [
+                     {
+                        "containerPort": 80,
+                        "name": "http"
+                     },
+                     {
+                        "containerPort": 443,
+                        "name": "https"
+                     }
+                  ],
+                  "readinessProbe": {
+                     "httpGet": {
+                        "path": "/healthz",
+                        "port": 10254
+                     },
+                     "timeoutSeconds": 5
+                  },
+                  "stdin": false,
+                  "tty": false,
+                  "volumeMounts": [ ]
+               },
+               {
+                  "args": [
+                     "--nginx.scrape_uri=http://localhost:18080/nginx_status/format/json"
+                  ],
+                  "command": [
+                     "nginx-vts-exporter"
+                  ],
+                  "env": [ ],
+                  "image": "anguslees/nginx-vts-exporter:v0.3",
+                  "livenessProbe": {
+                     "failureThreshold": 3,
+                     "httpGet": {
+                        "path": "/",
+                        "port": "prom"
+                     },
+                     "timeoutSeconds": 5
+                  },
+                  "name": "vts-exporter",
+                  "ports": [
+                     {
+                        "containerPort": 9913,
+                        "name": "prom"
+                     }
+                  ],
+                  "readinessProbe": {
+                     "httpGet": {
+                        "path": "/",
+                        "port": "prom"
+                     },
+                     "timeoutSeconds": 5
+                  },
+                  "stdin": false,
+                  "tty": false,
+                  "volumeMounts": [ ]
+               }
+            ],
+            "imagePullSecrets": [ ],
+            "terminationGracePeriodSeconds": 60,
+            "volumes": [ ]
+         }
+      }
+   }
+}

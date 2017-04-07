@@ -1,0 +1,145 @@
+{
+   "apiVersion": "extensions/v1beta1",
+   "kind": "Deployment",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "name": "prometheus"
+      },
+      "name": "prometheus",
+      "namespace": "monitoring"
+   },
+   "spec": {
+      "minReadySeconds": 30,
+      "replicas": 1,
+      "revisionHistoryLimit": 10,
+      "strategy": {
+         "rollingUpdate": {
+            "maxSurge": 0,
+            "maxUnavailable": 1
+         },
+         "type": "RollingUpdate"
+      },
+      "template": {
+         "metadata": {
+            "annotations": { },
+            "labels": {
+               "name": "prometheus"
+            }
+         },
+         "spec": {
+            "containers": [
+               {
+                  "args": [
+                     "--alertmanager.url=http://alertmanager.monitoring:9093/",
+                     "--config.file=/etc/prometheus-config/prometheus.yml",
+                     "--storage.local.memory-chunks=512000",
+                     "--storage.local.path=/prometheus",
+                     "--storage.local.retention=504h",
+                     "--web.console.libraries=/etc/prometheus/console_libraries",
+                     "--web.console.templates=/etc/prometheus/consoles",
+                     "--web.external-url=https://prometheus.k.int.bitnami.net/"
+                  ],
+                  "env": [
+                     {
+                        "name": "AWS_ACCESS_KEY_ID",
+                        "valueFrom": {
+                           "secretKeyRef": {
+                              "key": "access-key",
+                              "name": "aws-credentials-secret"
+                           }
+                        }
+                     },
+                     {
+                        "name": "AWS_SECRET_ACCESS_KEY",
+                        "valueFrom": {
+                           "secretKeyRef": {
+                              "key": "secret-access-key",
+                              "name": "aws-credentials-secret"
+                           }
+                        }
+                     }
+                  ],
+                  "image": "prom/prometheus:v1.4.1",
+                  "livenessProbe": {
+                     "httpGet": {
+                        "path": "/",
+                        "port": "web"
+                     },
+                     "initialDelaySeconds": 180
+                  },
+                  "name": "prometheus",
+                  "ports": [
+                     {
+                        "containerPort": 9090,
+                        "name": "web"
+                     }
+                  ],
+                  "readinessProbe": {
+                     "httpGet": {
+                        "path": "/",
+                        "port": "web"
+                     },
+                     "initialDelaySeconds": 5,
+                     "successThreshold": 2
+                  },
+                  "resources": {
+                     "requests": {
+                        "cpu": "500m",
+                        "memory": "1500Mi"
+                     }
+                  },
+                  "stdin": false,
+                  "tty": false,
+                  "volumeMounts": [
+                     {
+                        "mountPath": "/etc/prometheus-config",
+                        "name": "config",
+                        "readOnly": true
+                     },
+                     {
+                        "mountPath": "/prometheus",
+                        "name": "data"
+                     }
+                  ]
+               },
+               {
+                  "args": [
+                     "--volume-dir=/etc/config",
+                     "--webhook-url=http://localhost:9090/-/reload"
+                  ],
+                  "env": [ ],
+                  "image": "jimmidyson/configmap-reload:v0.1",
+                  "name": "configmap-reload",
+                  "ports": [ ],
+                  "stdin": false,
+                  "tty": false,
+                  "volumeMounts": [
+                     {
+                        "mountPath": "/etc/config",
+                        "name": "config",
+                        "readOnly": true
+                     }
+                  ]
+               }
+            ],
+            "imagePullSecrets": [ ],
+            "terminationGracePeriodSeconds": 300,
+            "volumes": [
+               {
+                  "configMap": {
+                     "name": "prometheus"
+                  },
+                  "name": "config"
+               },
+               {
+                  "name": "data",
+                  "persistentVolumeClaim": {
+                     "claimName": "prometheus-data"
+                  }
+               }
+            ]
+         }
+      }
+   }
+}

@@ -1,0 +1,22 @@
+{
+   "apiVersion": "v1",
+   "kind": "PersistentVolumeClaim",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "name": "proxy"
+      },
+      "name": "proxy",
+      "namespace": "webcache"
+   },
+   "spec": {
+      "accessModes": [
+         "ReadWriteOnce"
+      ],
+      "resources": {
+         "requests": {
+            "storage": "10G"
+         }
+      }
+   }
+}

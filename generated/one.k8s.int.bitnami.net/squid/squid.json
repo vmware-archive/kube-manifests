@@ -1,0 +1,85 @@
+{
+   "apiVersion": "extensions/v1beta1",
+   "kind": "Deployment",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "name": "proxy"
+      },
+      "name": "proxy",
+      "namespace": "webcache"
+   },
+   "spec": {
+      "minReadySeconds": 30,
+      "replicas": 1,
+      "revisionHistoryLimit": 10,
+      "strategy": {
+         "rollingUpdate": {
+            "maxSurge": 0,
+            "maxUnavailable": 1
+         },
+         "type": "RollingUpdate"
+      },
+      "template": {
+         "metadata": {
+            "annotations": { },
+            "labels": {
+               "name": "proxy"
+            }
+         },
+         "spec": {
+            "containers": [
+               {
+                  "args": [ ],
+                  "env": [
+                     {
+                        "name": "DISK_CACHE_SIZE",
+                        "value": "8000"
+                     },
+                     {
+                        "name": "SQUID_DIRECTIVES",
+                        "value": "acl localnet src 100.64.0.0/10"
+                     }
+                  ],
+                  "image": "jpetazzo/squid-in-a-can",
+                  "livenessProbe": {
+                     "tcpSocket": {
+                        "port": "proxy"
+                     }
+                  },
+                  "name": "squid",
+                  "ports": [
+                     {
+                        "containerPort": 3128,
+                        "name": "proxy"
+                     }
+                  ],
+                  "readinessProbe": {
+                     "tcpSocket": {
+                        "port": "proxy"
+                     }
+                  },
+                  "stdin": false,
+                  "tty": false,
+                  "volumeMounts": [
+                     {
+                        "mountPath": "/var/cache/squid3",
+                        "name": "cache"
+                     }
+                  ]
+               }
+            ],
+            "imagePullSecrets": [ ],
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [
+               {
+                  "name": "cache",
+                  "persistentVolumeClaim": {
+                     "claimName": "proxy"
+                  }
+               }
+            ]
+         }
+      }
+   }
+}

@@ -1,0 +1,84 @@
+# Constantly restarting containers
+ALERT CrashLooping
+  IF sum(rate(kube_pod_container_status_restarts[15m])) by (namespace,container) * 3600 > 0
+  FOR 1h
+  LABELS { severity = "notice" }
+  ANNOTATIONS {
+    summary = "Frequently restarting containers",
+    description = "{{ $labels.namespace }}/{{ $labels.container }} is restarting {{ $value }} times per hour",
+  }
+
+# NB: Probably won't be able to alert, if the config is sufficiently broken.
+ALERT PrometheusBadConfig
+  IF prometheus_config_last_reload_successful{kubernetes_namespace="monitoring"} == 0
+  FOR 10m
+  LABELS { severity = "critical" }
+  ANNOTATIONS {
+    summary = "Prometheus failed to reload config",
+    description = "Config error with prometheus, see container logs",
+  }
+
+# NB: Probably won't be able to alert, if the config is sufficiently broken.
+ALERT AlertmanagerBadConfig
+  IF alertmanager_config_last_reload_successful{kubernetes_namespace="monitoring"} == 0
+  FOR 10m
+  LABELS { severity = "critical" }
+  ANNOTATIONS {
+    summary = "Alertmanager failed to reload config",
+    description = "Config error with alertmanager, see container logs",
+  }
+
+# NB: Probably won't be able to alert, if prom/am are hard down.
+ALERT MonitoringJobDown
+  IF up{kubernetes_namespace="monitoring", name="prometheus"} != 1 or
+     up{kubernetes_namespace="monitoring", name="alertmanager"} != 1 or
+     up{kubernetes_namespace="monitoring", name="blackbox"} != 1 or
+     up{kubernetes_namespace="monitoring", name="kube-state-metrics"} != 1
+  FOR 10m
+  LABELS { severity = "critical" }
+  ANNOTATIONS {
+    summary = "Required monitoring job is not running",
+    description = "{{ $labels.kubernetes_namespace }}/{{ $labels.kubernetes_name }} is down",
+  }
+
+# This "legitimately" gets out of sync during a cluster
+# rolling-update, and the impact isn't as great - so use a more
+# forgiving duration.
+ALERT MonitoringJobDownNode
+  IF sum(up{kubernetes_namespace="monitoring",name="node-exporter"}) !=
+     sum(kube_node_status_ready{condition="true"})
+  FOR 60m
+  LABELS { severity = "warning" }
+  ANNOTATIONS {
+    summary = "Node-level monitoring job is not running",
+    description = "node-exporter is down",
+  }
+
+ALERT UnderservedAZ
+  IF sum(up{job="kubernetes_nodes"}) by (failure_domain_beta_kubernetes_io_zone) < 2
+  FOR 1h
+  TODO: LABELS { severity = "notice" }
+  ANNOTATIONS {
+    summary = "Not enough nodes in AZ",
+    description = "Only {{ $value }} nodes are up in AZ {{ $labels.failure_domain_beta_kubernetes_io_zone }}",
+  }
+
+# This is alerting on a cause rather than a symptom, so is likely to be
+# noisy.  May want to revisit/remove.
+ALERT NodeNotReady
+  IF max(kube_node_status_ready{condition="false"} == 1) by (node)
+  FOR 1d
+  TODO: LABELS { severity = "notice" }
+  ANNOTATIONS {
+    summary = "Node not ready for a long time",
+    description = "{{ $labels.node }} has been unready for more than a day",
+  }
+
+ALERT K8sApiUnavailable
+  IF max(up{job="kubernetes_apiservers"}) != 1
+  FOR 10m
+  TODO: LABELS { severity = "critical" }
+  ANNOTATIONS {
+    summary = "Kubernetes API is unavailable",
+    description = "Kubernetes API is not responding",
+  }
