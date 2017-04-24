@@ -23,7 +23,7 @@
 //
 // To combat this, this library attempts to provide more "jsonnet
 // native" variants of these arrays in alternative hidden fields that
-// end with an underscore.  For example, then `env_` block in
+// end with an underscore.  For example, the `env_` block in
 // `Container`:
 // ```
 // kube.Container("foo") {
