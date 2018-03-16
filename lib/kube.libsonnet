@@ -65,6 +65,9 @@
   // Convert {foo: {a: b}} to [{name: foo, a: b}]
   mapToNamedList(o):: [{ name: $.hyphenate(n) } + o[n] for n in std.objectFields(o)],
 
+  // Return object containing only these fields elements
+  filterMapByFields(o, fields): { [field]: o[field] for field in std.setInter(std.objectFields(o), fields) },
+
   // Convert from SI unit suffixes to regular number
   siToNum(n):: (
     local convert =
@@ -121,10 +124,13 @@
 
     // Helpers that format host:port in various ways
     http_url:: "http://%s.%s:%s/" % [
-      self.metadata.name, self.metadata.namespace, self.spec.ports[0].port,
+      self.metadata.name,
+      self.metadata.namespace,
+      self.spec.ports[0].port,
     ],
     proxy_urlpath:: "/api/v1/proxy/namespaces/%s/services/%s/" % [
-      self.metadata.namespace, self.metadata.name,
+      self.metadata.namespace,
+      self.metadata.name,
     ],
     // Useful in Ingress rules
     name_port:: {
@@ -185,7 +191,8 @@
 
     envList(map):: [
       if std.type(map[x]) == "object" then { name: x, valueFrom: map[x] } else { name: x, value: map[x] }
-      for x in std.objectFields(map)],
+      for x in std.objectFields(map)
+    ],
 
     env_:: {},
     env: self.envList(self.env_),
@@ -223,6 +230,21 @@
     terminationGracePeriodSeconds: 30,
 
     assert std.length(self.containers) > 0 : "must have at least one container",
+
+    // Return an array of pod's ports numbers
+    ports(proto):: [
+      p.containerPort
+      for p in std.flattenArrays([
+        c.ports
+        for c in self.containers
+      ])
+      if (
+        (!(std.objectHas(p, "protocol")) && proto == "TCP")
+        ||
+        ((std.objectHas(p, "protocol")) && p.protocol == proto)
+      )
+    ],
+
   },
 
   EmptyDirVolume(): {
@@ -255,8 +277,11 @@
 
     // I keep thinking data values can be any JSON type.  This check
     // will remind me that they must be strings :(
-    local nonstrings = [k for k in std.objectFields(self.data)
-                        if std.type(self.data[k]) != "string"],
+    local nonstrings = [
+      k
+      for k in std.objectFields(self.data)
+      if std.type(self.data[k]) != "string"
+    ],
     assert std.length(nonstrings) == 0 : "data contains non-string values: %s" % [nonstrings],
   },
 
@@ -318,8 +343,11 @@
       strategy: {
         type: "RollingUpdate",
 
-        local pvcs = [v for v in deployment.spec.template.spec.volumes
-                      if std.objectHas(v, "persistentVolumeClaim")],
+        local pvcs = [
+          v
+          for v in deployment.spec.template.spec.volumes
+          if std.objectHas(v, "persistentVolumeClaim")
+        ],
         local is_stateless = std.length(pvcs) == 0,
 
         // Apps trying to maintain a majority quorum or similar will
@@ -392,20 +420,22 @@
   Job(name): $._Object("batch/v1", "Job", name) {
     local job = self,
 
-    spec: {
-      template: {
-        spec: $.PodSpec {
-          restartPolicy: "OnFailure",
-        },
-        metadata: {
-          labels: job.metadata.labels,
-          annotations: {},
-        },
-      },
+    spec: $.JobSpec(job),
+  },
 
-      completions: 1,
-      parallelism: 1,
+  JobSpec(parent): {
+    template: {
+      spec: $.PodSpec {
+        restartPolicy: "OnFailure",
+      },
+      metadata: {
+        labels: parent.metadata.labels,
+        annotations: {},
+      },
     },
+
+    completions: 1,
+    parallelism: 1,
   },
 
   DaemonSet(name): $._Object("extensions/v1beta1", "DaemonSet", name) {
@@ -430,10 +460,14 @@
     versions: [{ name: n } for n in self.versions_],
   },
 
+  CustomResourceDefinition(name): $._Object("apiextensions.k8s.io/v1beta1", "CustomResourceDefinition", name) {
+    spec: {},
+  },
+
   ServiceAccount(name): $._Object("v1", "ServiceAccount", name) {
   },
 
-  Role(name): $._Object("rbac.authorization.k8s.io/v1alpha1", "Role", name) {
+  Role(name): $._Object("rbac.authorization.k8s.io/v1beta1", "Role", name) {
     rules: [],
   },
 
@@ -441,7 +475,19 @@
     kind: "ClusterRole",
   },
 
-  RoleBinding(name): $._Object("rbac.authorization.k8s.io/v1alpha1", "RoleBinding", name) {
+  Group(name): {
+    kind: "Group",
+    name: name,
+    apiGroup: "rbac.authorization.k8s.io",
+  },
+
+  User(name): {
+    kind: "User",
+    name: name,
+    apiGroup: "rbac.authorization.k8s.io",
+  },
+
+  RoleBinding(name): $._Object("rbac.authorization.k8s.io/v1beta1", "RoleBinding", name) {
     local rb = self,
 
     subjects_:: [],
@@ -453,7 +499,7 @@
 
     roleRef_:: error "roleRef is required",
     roleRef: {
-      apiGroup: rb.roleRef_.apiVersion,
+      apiGroup: "rbac.authorization.k8s.io",
       kind: rb.roleRef_.kind,
       name: rb.roleRef_.metadata.name,
     },
@@ -461,5 +507,88 @@
 
   ClusterRoleBinding(name): $.RoleBinding(name) {
     kind: "ClusterRoleBinding",
+  },
+
+  // NB: datalines_ can be used to reduce boilerplate importstr as:
+  // kubectl get secret ... -ojson mysec | kubeseal | jq -r .spec.data > mysec-ssdata.txt
+  //   datalines_: importstr "mysec-ssddata.txt"
+  SealedSecret(name): $._Object("bitnami.com/v1alpha1", "SealedSecret", name) {
+    spec: {
+      data:
+        if self.datalines_ != ""
+        then std.join("", std.split(self.datalines_, "\n"))
+        else error "data or datalines_ required (output from: kubeseal | jq -r .spec.data)",
+      datalines_:: "",
+    },
+    assert std.base64Decode(self.spec.data) != "",
+  },
+
+  // NB: kubernetes >= 1.8.x has batch/v1beta1 (olders were batch/v2alpha1)
+  CronJob(name): $._Object("batch/v1beta1", "CronJob", name) {
+    local cronjob = self,
+
+    spec: {
+      jobTemplate: {
+        spec: $.JobSpec(cronjob),
+      },
+
+      schedule: error "Need to provide spec.schedule",
+      successfulJobsHistoryLimit: 10,
+      failedJobsHistoryLimit: 20,
+      // NB: upstream concurrencyPolicy default is "Allow"
+      concurrencyPolicy: "Forbid",
+    },
+  },
+
+  // NB: helper method to access several Kubernetes objects podRef,
+  // used below to extract its labels
+  podRef(obj):: ({
+                   Pod: obj,
+                   Deployment: obj.spec.template,
+                   StatefulSet: obj.spec.template,
+                   DaemonSet: obj.spec.template,
+                   Job: obj.spec.template,
+                   CronJob: obj.spec.jobTemplate.spec.template,
+                 }[obj.kind]),
+
+  // NB: return a { podSelector: ... } ready to use for e.g. NSPs (see below)
+  // pod labels can be optionally filtered by their label name 2nd array arg
+  podLabelsSelector(obj, filter=null):: {
+    podSelector: std.prune({
+      matchLabels:
+        if filter != null then $.filterMapByFields($.podRef(obj).metadata.labels, filter)
+        else $.podRef(obj).metadata.labels,
+    }),
+  },
+
+  // NB: Returns an array as [{ port: num, protocol: "PROTO" }, {...}, ... ]
+  // Need to split TCP, UDP logic to be able to dedup each set of protocol ports
+  podsPorts(obj_list):: std.flattenArrays([
+    [
+      { port: port, protocol: protocol }
+      for port in std.set(
+        std.flattenArrays([$.podRef(obj).spec.ports(protocol) for obj in obj_list])
+      )
+    ]
+    for protocol in ["TCP", "UDP"]
+  ]),
+
+  // NB: most of the "helper" stuff comes from above (podLabelsSelector, podsPorts),
+  // NetworkPolicy returned object will have "Ingress", "Egress" policyTypes auto-set
+  // based on populated spec.ingress or spec.egress
+  // See tests/test-simple-validate.jsonnet for example(s).
+  NetworkPolicy(name): $._Object("networking.k8s.io/v1", "NetworkPolicy", name) {
+    local networkpolicy = self,
+    spec: {
+      podSelector: {},
+      policyTypes: std.prune([
+        if networkpolicy.spec.ingress != [] then "Ingress" else null,
+        if networkpolicy.spec.egress != [] then "Egress" else null,
+      ]),
+      ingress: $.objectValues(self.ingress_),
+      ingress_:: {},
+      egress: $.objectValues(self.egress_),
+      egress_:: {},
+    },
   },
 }

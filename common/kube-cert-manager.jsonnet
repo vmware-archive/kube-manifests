@@ -30,11 +30,21 @@ local kube = import "kube.libsonnet";
 
 local all = {
   namespace:: null,
+  renew_before_days:: "21",
 
-  kcm_resource: kube.ThirdPartyResource("certificate.stable.k8s.psg.io") {
-    description: "A specification of a Let's Encrypt Certificate to manage.",
-    versions_: ["v1"],
+  kcm_resource_crd:: kube.CustomResourceDefinition("certificates.stable.k8s.psg.io") {
+    spec: {
+      scope: "Namespaced",
+      group: "stable.k8s.psg.io",
+      version: "v1",
+      names: {
+        kind: "Certificate",
+        plural: "certificates",
+        singular: "certificate",
+      },
+    },
   },
+  kcm_resource: self.kcm_resource_crd,
 
   kcm_pvc: kube.PersistentVolumeClaim("kube-cert-manager") {
     metadata+: { namespace: $.namespace },
@@ -49,6 +59,11 @@ local all = {
     },
   },
 
+  // Only needed by ingresses with: kcm_provider == "http"
+  kcm_svc: kube.Service("kube-cert-manager") {
+    metadata+: { namespace: $.namespace },
+    target_pod: $.kcm.spec.template,
+  },
   kcm: kube.Deployment("kube-cert-manager") {
     metadata+: { namespace: $.namespace },
     spec+: {
@@ -57,11 +72,12 @@ local all = {
           default_container: "kcm",
           containers_+: {
             kcm: kube.Container("kube-cert-manager") {
-              image: "palmstonegames/kube-cert-manager:0.3.1",
+              image: "iosphere/kube-cert-manager:5bba617",
               args_+: {
                 "data-dir": "/var/lib/cert-manager",
                 // staging: "https://acme-staging.api.letsencrypt.org/directory"
                 "acme-url": "https://acme-v01.api.letsencrypt.org/directory",
+                "renew-before-days": $.renew_before_days,
               },
               env_+: {
                 // See https://github.com/PalmStoneGames/kube-cert-manager/blob/master/docs/providers.md
@@ -75,9 +91,6 @@ local all = {
               volumeMounts_+: {
                 data: { mountPath: "/var/lib/cert-manager" },
               },
-            },
-            kubectl_proxy: kube.Container("kubectl-proxy") {
-              image: "palmstonegames/kubectl-proxy:1.4.0",
             },
           },
           volumes_+: {

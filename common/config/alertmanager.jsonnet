@@ -4,11 +4,16 @@ local mapToNamedList(namefield, obj) =
   [{ [namefield]: n } + obj[n] for n in std.objectFields(obj)];
 
 {
+  cluster:: error "cluster must be defined",
+
   global: {
     resolve_timeout: "5m",
 
     // Restricted Gmail SMTP server - can only send to GMail or
     // GSuite, and may get spam filtered.
+    // TODO: Don't want alerts spam-filtered!  Should switch to
+    // authenticated sender (by password or source IP) - see
+    // https://support.google.com/a/answer/176600
     smtp_smarthost: "aspmx.l.google.com",
     smtp_from: "sre+alertmanager@bitnami.com",
 
@@ -26,20 +31,28 @@ local mapToNamedList(namefield, obj) =
   ],
 
   route: {
-    group_by: ["alertmanager", "cluster", "service"],
+    group_by: ["alertmanager", "alertname", "cluster", "notify_to", "slack_channel"],
     group_wait: "1m",
-    group_interval: "10m",
-    repeat_interval: "8h",
+    group_interval: "5m",
+    repeat_interval: "6h",
     receiver: "default",
-
-    routes: [],
+    routes: [
+      {
+        receiver: "slack",
+        match_re: {
+          notify_to: "^slack$",
+          slack_channel: "^#[a-z].+",
+        },
+      },
+    ],
   },
 
   receivers: mapToNamedList("name", self.receivers_),
   receivers_:: {
     local slack_defaults = {
-      title: "{{ range .Alerts }}{{ .Annotations.summary }} {{ end }}",
-      text: "{{ range .Alerts }}{{ .Annotations.description }} {{ end }}",
+      title: "{{ with $alert := index .Alerts 0 }}{{ $alert.Annotations.summary }}{{ end }}",
+      text: "Cluster: " + $.cluster + "\n{{ range .Alerts }}[{{ .Status | toUpper }}] {{ .Annotations.description }}\n{{ end }}",
+      send_resolved: true,
     },
 
     default: {
@@ -51,17 +64,17 @@ local mapToNamedList(namefield, obj) =
       ],
     },
 
-    sre_slack: {
+    slack: {
       slack_configs: [
         slack_defaults {
-          channel: "#sre-incidents",
+          channel: "{{ .GroupLabels.slack_channel }}",
         },
       ],
     },
 
-    sre_email: {
+    email: {
       email_configs: [
-        { to: "sre+alerts@bitnami.com" },
+        { to: "sre+alerts@example.com" },
       ],
     },
   },

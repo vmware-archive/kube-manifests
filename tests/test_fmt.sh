@@ -12,7 +12,7 @@ flags="\
 "
 
 fail=0
-for f in $(find . -regex '.*\.\(jsonnet\|libsonnet\)$' -print); do
+for f in $(find . -name "*sonnet" ! -path "./.git/*" -print); do
     if ! jsonnet fmt --test $flags -- $f; then
         echo "$f needs reformatting. Try:" >&2
         echo " jsonnet fmt -i $flags $f" >&2

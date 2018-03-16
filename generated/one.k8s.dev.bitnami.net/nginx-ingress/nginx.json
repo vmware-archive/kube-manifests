@@ -11,7 +11,7 @@
    },
    "spec": {
       "minReadySeconds": 30,
-      "replicas": 1,
+      "replicas": 2,
       "revisionHistoryLimit": 10,
       "strategy": {
          "rollingUpdate": {
@@ -24,7 +24,7 @@
          "metadata": {
             "annotations": {
                "prometheus.io/path": "/metrics",
-               "prometheus.io/port": "9913",
+               "prometheus.io/port": "10254",
                "prometheus.io/scrape": "true"
             },
             "labels": {
@@ -35,8 +35,8 @@
             "containers": [
                {
                   "args": [
-                     "--default-backend-service=$(POD_NAMESPACE)/default-http-backend",
-                     "--nginx-configmap=$(POD_NAMESPACE)/nginx"
+                     "--configmap=$(POD_NAMESPACE)/nginx-ingress",
+                     "--default-backend-service=$(POD_NAMESPACE)/default-http-backend"
                   ],
                   "command": [
                      "/nginx-ingress-controller"
@@ -61,7 +61,7 @@
                         }
                      }
                   ],
-                  "image": "gcr.io/google_containers/nginx-ingress-controller:0.8.3",
+                  "image": "quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.11.0",
                   "livenessProbe": {
                      "failureThreshold": 5,
                      "httpGet": {
@@ -92,44 +92,10 @@
                   "stdin": false,
                   "tty": false,
                   "volumeMounts": [ ]
-               },
-               {
-                  "args": [
-                     "--nginx.scrape_uri=http://localhost:18080/nginx_status/format/json"
-                  ],
-                  "command": [
-                     "nginx-vts-exporter"
-                  ],
-                  "env": [ ],
-                  "image": "anguslees/nginx-vts-exporter:v0.3",
-                  "livenessProbe": {
-                     "failureThreshold": 3,
-                     "httpGet": {
-                        "path": "/",
-                        "port": "prom"
-                     },
-                     "timeoutSeconds": 5
-                  },
-                  "name": "vts-exporter",
-                  "ports": [
-                     {
-                        "containerPort": 9913,
-                        "name": "prom"
-                     }
-                  ],
-                  "readinessProbe": {
-                     "httpGet": {
-                        "path": "/",
-                        "port": "prom"
-                     },
-                     "timeoutSeconds": 5
-                  },
-                  "stdin": false,
-                  "tty": false,
-                  "volumeMounts": [ ]
                }
             ],
             "imagePullSecrets": [ ],
+            "serviceAccountName": "nginx-ingress",
             "terminationGracePeriodSeconds": 60,
             "volumes": [ ]
          }

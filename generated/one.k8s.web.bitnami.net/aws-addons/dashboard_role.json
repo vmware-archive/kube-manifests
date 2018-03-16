@@ -1,0 +1,98 @@
+{
+   "apiVersion": "rbac.authorization.k8s.io/v1beta1",
+   "kind": "Role",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "name": "kubernetes-dashboard-minimal"
+      },
+      "name": "kubernetes-dashboard-minimal",
+      "namespace": "kube-system"
+   },
+   "rules": [
+      {
+         "apiGroups": [
+            ""
+         ],
+         "resources": [
+            "secrets"
+         ],
+         "verbs": [
+            "create"
+         ]
+      },
+      {
+         "apiGroups": [
+            ""
+         ],
+         "resources": [
+            "configmaps"
+         ],
+         "verbs": [
+            "create"
+         ]
+      },
+      {
+         "apiGroups": [
+            ""
+         ],
+         "resourceNames": [
+            "kubernetes-dashboard-key-holder",
+            "kubernetes-dashboard-certs"
+         ],
+         "resources": [
+            "secrets"
+         ],
+         "verbs": [
+            "get",
+            "update",
+            "delete"
+         ]
+      },
+      {
+         "apiGroups": [
+            ""
+         ],
+         "resourceNames": [
+            "kubernetes-dashboard-settings"
+         ],
+         "resources": [
+            "configmaps"
+         ],
+         "verbs": [
+            "get",
+            "update"
+         ]
+      },
+      {
+         "apiGroups": [
+            ""
+         ],
+         "resourceNames": [
+            "heapster"
+         ],
+         "resources": [
+            "services"
+         ],
+         "verbs": [
+            "proxy"
+         ]
+      },
+      {
+         "apiGroups": [
+            ""
+         ],
+         "resourceNames": [
+            "heapster",
+            "http:heapster:",
+            "https:heapster:"
+         ],
+         "resources": [
+            "services/proxy"
+         ],
+         "verbs": [
+            "get"
+         ]
+      }
+   ]
+}

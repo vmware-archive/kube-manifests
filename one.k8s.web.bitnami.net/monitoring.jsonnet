@@ -6,7 +6,7 @@ local all = prometheus.items_ + ksw.items_ {
   namespace: "monitoring",
 
   prom_config: import "config/prometheus.jsonnet",
-  am_config: error "no alertmanager config",
+  am_config: import "config/alertmanager.jsonnet",
   bb_config: import "config/blackbox.jsonnet",
 
   prometheus_ns: kube.Namespace($.namespace),
@@ -18,10 +18,9 @@ local all = prometheus.items_ + ksw.items_ {
   },
 
   prometheus_ing+: {
-    host: "prometheus.k.web.bitnami.net",
+    host: "prometheus.k.bitnami.net",
   },
 
-  // Disable alertmanager in web cluster (uses int cluster)
   alertmanager_ing:: null,
   alertmanager_svc:: null,
   alertmanager_data:: null,

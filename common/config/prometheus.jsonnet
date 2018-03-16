@@ -4,14 +4,16 @@
 // to discover targets.
 
 local mapToNamedList(namefield, obj) =
-  [{ [namefield]: n } + obj[n] for n in std.objectFields(obj)];
+  [{ [namefield]: n } + obj[n] for n in std.objectFields(obj) if obj[n] != null];
 
 {
   global: {
     scrape_interval: "1m",
+    scrape_timeout: "30s",
     external_labels: {},
   },
 
+  // NOTE: prometheus-v2 overwrites this to *.rules.yml
   rule_files: ["/etc/prometheus-config/*.rules"],
 
   kubeauth_scrape:: {
@@ -69,6 +71,60 @@ local mapToNamedList(namefield, obj) =
         {
           action: "labelmap",
           regex: "__meta_kubernetes_node_label_(.+)",
+        },
+        {
+          target_label: "__address__",
+          replacement: "kubernetes.default.svc.cluster.local:443",
+        },
+        {
+          target_label: "__scheme__",
+          replacement: "https",
+        },
+        {
+          source_labels: ["__meta_kubernetes_node_name"],
+          regex: "(.+)",
+          target_label: "__metrics_path__",
+          replacement: "/api/v1/nodes/${1}/proxy/metrics",
+        },
+      ],
+    },
+    // Scrape config for Kubelet cAdvisor.
+    //
+    // This is required for Kubernetes 1.7.3 and later, where cAdvisor metrics
+    // (those whose names begin with 'container_') have been removed from the
+    // Kubelet metrics endpoint.  This job scrapes the cAdvisor endpoint to
+    // retrieve those metrics.
+    //
+    // In Kubernetes 1.7.0-1.7.2, these metrics are only exposed on the cAdvisor
+    // HTTP endpoint; use "replacement: /api/v1/nodes/${1}:4194/proxy/metrics"
+    // in that case (and ensure cAdvisor's HTTP server hasn't been disabled with
+    // the --cadvisor-port=0 Kubelet flag).
+    //
+    // This job is not necessary and should be removed in Kubernetes 1.6 and
+    // earlier versions, or it will cause the metrics to be scraped twice.
+    kubernetes_cadvisor: $.kubeauth_scrape {
+      kubernetes_sd_configs: [{ role: "node" }],
+      tls_config+: {
+        insecure_skip_verify: true,
+      },
+      relabel_configs: [
+        {
+          action: "labelmap",
+          regex: "__meta_kubernetes_node_label_(.+)",
+        },
+        {
+          target_label: "__address__",
+          replacement: "kubernetes.default.svc.cluster.local:443",
+        },
+        {
+          target_label: "__scheme__",
+          replacement: "https",
+        },
+        {
+          source_labels: ["__meta_kubernetes_node_name"],
+          regex: "(.+)",
+          target_label: "__metrics_path__",
+          replacement: "/api/v1/nodes/${1}/proxy/metrics/cadvisor",
         },
       ],
     },
@@ -158,18 +214,6 @@ local mapToNamedList(namefield, obj) =
           regex: true,
         },
         {
-          source_labels: ["__address__"],
-          target_label: "__param_target",
-        },
-        {
-          target_label: "__address__",
-          replacement: "blackbox",  // Must match name of blackbox service
-        },
-        {
-          source_labels: ["__param_target"],
-          target_label: "instance",
-        },
-        {
           action: "labelmap",
           regex: "__meta_kubernetes_service_label_(.+)",
         },
@@ -180,6 +224,22 @@ local mapToNamedList(namefield, obj) =
         {
           source_labels: ["__meta_kubernetes_service_name"],
           target_label: "kubernetes_name",
+        },
+        {
+          action: "labelmap",
+          regex: "__meta_kubernetes_service_annotation_bitnami_com_(.+)",
+        },
+        {
+          source_labels: [
+            "__meta_kubernetes_service_annotation_bitnami_com_vhost",
+          ],
+          regex: "(.*)",
+          replacement: "$1",
+          target_label: "__param_target",
+        },
+        {
+          target_label: "__address__",
+          replacement: "blackbox:9115",
         },
       ],
     },
@@ -251,6 +311,11 @@ local mapToNamedList(namefield, obj) =
       ec2_sd_configs: [{ region: "us-east-1" }],
       relabel_configs: [
         {
+          action: "labelmap",
+          regex: "__meta_ec2_tag_(.+)",
+        },
+
+        {
           source_labels: [
             "__meta_ec2_tag_monitoring_type",
           ],
@@ -263,30 +328,6 @@ local mapToNamedList(namefield, obj) =
           ],
           replacement: "$1",
           target_label: "__address__",
-        },
-        {
-          source_labels: [
-            "__meta_ec2_tag_Name",
-          ],
-          target_label: "name",
-        },
-        {
-          source_labels: [
-            "__meta_ec2_tag_kind_of",
-          ],
-          target_label: "kind_of",
-        },
-        {
-          source_labels: [
-            "__meta_ec2_tag_stage",
-          ],
-          target_label: "stage",
-        },
-        {
-          source_labels: [
-            "__meta_ec2_tag_role",
-          ],
-          target_label: "role",
         },
       ],
     },
@@ -301,53 +342,33 @@ local mapToNamedList(namefield, obj) =
       ec2_sd_configs: [{ region: "us-east-1" }],
       relabel_configs: [
         {
-          source_labels: [
-            "__meta_ec2_tag_monitoring_type",
-          ],
-          action: "keep",
-          regex: "full|blackbox",
+          action: "labelmap",
+          regex: "__meta_ec2_tag_(.+)",
         },
         {
           source_labels: [
-            "__meta_ec2_tag_monitoring_vhost",
+            "__meta_ec2_tag_probe",
+          ],
+          action: "keep",
+          regex: "true",
+        },
+        {
+          source_labels: [
+            "__meta_ec2_tag_probe_target",
           ],
           regex: "(.*)",
-          replacement: "https://$1",
+          replacement: "$1",
           target_label: "__param_target",
+        },
+        {
+          source_labels: [
+            "__meta_ec2_tag_probe_target",
+          ],
+          target_label: "vhost",
         },
         {
           target_label: "__address__",
           replacement: "blackbox:9115",
-        },
-        {
-          source_labels: [
-            "__param_target",
-          ],
-          target_label: "instance",
-        },
-        {
-          source_labels: [
-            "__meta_ec2_tag_Name",
-          ],
-          target_label: "name",
-        },
-        {
-          source_labels: [
-            "__meta_ec2_tag_kind_of",
-          ],
-          target_label: "kind_of",
-        },
-        {
-          source_labels: [
-            "__meta_ec2_tag_stage",
-          ],
-          target_label: "stage",
-        },
-        {
-          source_labels: [
-            "__meta_ec2_tag_role",
-          ],
-          target_label: "role",
         },
       ],
     },

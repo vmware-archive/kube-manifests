@@ -49,40 +49,123 @@ local all = elasticsearch {
     parameters: { type: "gp2" },
   },
 
+  dashboard_certs: kube.Secret("kubernetes-dashboard-certs") {
+    metadata+: {
+      namespace: $.namespace,
+      labels+: {
+        "k8s-app": "kubernetes-dashboard",
+      },
+    },
+  },
+
+  dashboard_sa: kube.ServiceAccount("kubernetes-dashboard") {
+    metadata+: {
+      namespace: $.namespace,
+      labels+: {
+        "k8s-app": "kubernetes-dashboard",
+      },
+    },
+  },
+
+  dashboard_role: kube.Role("kubernetes-dashboard-minimal") {
+    metadata+: {
+      namespace: $.namespace,
+    },
+    rules: [{
+      apiGroups: [""],
+      resources: ["secrets"],
+      verbs: ["create"],
+    }, {
+      apiGroups: [""],
+      resources: ["configmaps"],
+      verbs: ["create"],
+    }, {
+      apiGroups: [""],
+      resources: ["secrets"],
+      resourceNames: ["kubernetes-dashboard-key-holder", "kubernetes-dashboard-certs"],
+      verbs: ["get", "update", "delete"],
+    }, {
+      apiGroups: [""],
+      resources: ["configmaps"],
+      resourceNames: ["kubernetes-dashboard-settings"],
+      verbs: ["get", "update"],
+
+    }, {
+      apiGroups: [""],
+      resources: ["services"],
+      resourceNames: ["heapster"],
+      verbs: ["proxy"],
+    }, {
+      apiGroups: [""],
+      resources: ["services/proxy"],
+      resourceNames: ["heapster", "http:heapster:", "https:heapster:"],
+      verbs: ["get"],
+    }],
+  },
+
+  dashboard_role_binding: kube.RoleBinding("kubernetes-dashboard-minimal") {
+    metadata+: {
+      namespace: $.namespace,
+    },
+    roleRef_: $.dashboard_role,
+    subjects_: [$.dashboard_sa],
+  },
+
   dashboard_svc: kube.Service("kubernetes-dashboard") + cluster_service {
     metadata+: {
+      namespace: $.namespace,
       labels+: {
-        "kubernetes.io/name": "Dashboard",
+        "k8s-app": "kubernetes-dashboard",
       },
     },
     target_pod: $.dashboard.spec.template,
     spec+: {
-      // Needs to not use a port name in order for default /ui
-      // redirect URL to work
-      ports: [{ port: 80, targetPort: "web" }],
+      // Needs to not use a port name in order for default URL to work
+      ports: [{ port: 443, targetPort: 8443 }],
+      selector: { "k8s-app": "kubernetes-dashboard" },
     },
   },
 
-  dashboard: kube.Deployment("kubernetes-dashboard") + cluster_service {
+  dashboard_deploy: kube.Deployment("kubernetes-dashboard") + cluster_service {
+    metadata+: {
+      namespace: $.namespace,
+      labels+: {
+        "k8s-app": "kubernetes-dashboard",
+      },
+    },
     spec+: {
       template+: {
         spec+: {
+          serviceAccountName: $.dashboard_sa.metadata.name,
           containers_+: {
             dashboard: kube.Container("kubernetes-dashboard") {
-              image: "gcr.io/google_containers/kubernetes-dashboard-amd64:v1.5.1",
+              image: "k8s.gcr.io/kubernetes-dashboard-amd64:v1.8.2",
+              args: ["--auto-generate-certificates"],
               resources: {
-                limits: { cpu: "100m", memory: "50Mi" },
-                requests: self.limits,
+                limits: { cpu: "200m", memory: "500Mi" },
+                requests: { cpu: "100m", memory: "200Mi" },
               },
               ports_+: {
-                web: { containerPort: 9090 },
+                web: { containerPort: 8443 },
               },
               livenessProbe: {
-                httpGet: { path: "/", port: 9090 },
+                httpGet: { path: "/", port: 8443, scheme: "HTTPS" },
                 initialDelaySeconds: 30,
                 timeoutSeconds: 30,
               },
+              volumeMounts_+: {
+                kubernetes_dashboard_certs: {
+                  mountPath: "/certs",
+                },
+                tmp_volume: {
+                  mountPath: "/tmp",
+                },
+              },
             },
+          },
+          volumes_+: {
+            kubernetes_dashboard_certs: kube.SecretVolume($.dashboard_certs),
+            tmp_volume: kube.EmptyDirVolume(),
           },
         },
       },
@@ -101,7 +184,7 @@ local all = elasticsearch {
       selector: { "k8s-app": "heapster" },
     },
   },
-  local heapster_version = "v1.2.0",
+  local heapster_version = "v1.4.2",
   heapster: kube.Deployment("heapster") + cluster_service {
     metadata+: {
       labels+: {
@@ -160,8 +243,6 @@ local all = elasticsearch {
     },
   },
 
-  kibana_logging_svc+: cluster_service,
-
   fluentd_es: kube.DaemonSet("fluentd-es") {
     metadata+: {
       namespace: $.namespace,
@@ -176,7 +257,8 @@ local all = elasticsearch {
             fluentd_es: kube.Container("fluentd-es") {
               image: "gcr.io/google_containers/fluentd-elasticsearch:1.20",
               command: [
-                "/bin/sh", "-c",
+                "/bin/sh",
+                "-c",
                 "/usr/sbin/td-agent 2>&1 >> /var/log/fluentd.log",
               ],
               resources: {
@@ -209,6 +291,8 @@ local all = elasticsearch {
       },
     },
   },
+
+  kibana_logging_svc+: cluster_service,
 };
 
 kube.List() { items_+: all }

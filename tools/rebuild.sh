@@ -1,7 +1,4 @@
 #!/bin/sh
-#
-# Evaluate all the jsonnet and produce json files below generated/
-#
 
 set -e
 
@@ -26,7 +23,7 @@ if [ -d "$outdir" ]; then
     rm -r "$outdir"
 fi
 
-for f in *.bitnami.net/*.jsonnet; do
+for f in $(find *.bitnami\.net -name '*.jsonnet' | grep -v config); do
     echo "$f =>"
     d=$outdir/${f%.jsonnet}
     mkdir -p "$d"

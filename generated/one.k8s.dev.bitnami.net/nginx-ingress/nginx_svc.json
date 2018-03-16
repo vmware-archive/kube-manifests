@@ -5,6 +5,7 @@
       "annotations": {
          "service.beta.kubernetes.io/aws-load-balancer-connection-draining-enabled": "true",
          "service.beta.kubernetes.io/aws-load-balancer-connection-draining-timeout": "60",
+         "service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout": "1200",
          "service.beta.kubernetes.io/aws-load-balancer-internal": "0.0.0.0/0",
          "service.beta.kubernetes.io/aws-load-balancer-proxy-protocol": "*"
       },

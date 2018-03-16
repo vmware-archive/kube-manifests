@@ -1,20 +1,21 @@
 local config = import "../../common/config/alertmanager.jsonnet";
 
 config {
+  cluster: "one.k8s.int.bitnami.net",
   route+: {
     routes: [
       {
         match: { severity: "critical" },
         repeat_interval: "15m",
-        receiver: "sre_slack",
+        receiver: "slack",
       },
       {
         match: { severity: "warning" },
-        receiver: "sre_slack",
+        receiver: "slack",
       },
       {
         match: { severity: "notice" },
-        receiver: "sre_email",
+        receiver: "email",
       },
     ],
   },

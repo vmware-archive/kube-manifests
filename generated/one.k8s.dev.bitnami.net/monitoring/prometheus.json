@@ -31,42 +31,24 @@
             "containers": [
                {
                   "args": [
-                     "--alertmanager.url=http://alertmanager.monitoring:9093/",
                      "--config.file=/etc/prometheus-config/prometheus.yml",
-                     "--storage.local.memory-chunks=512000",
                      "--storage.local.path=/prometheus",
                      "--storage.local.retention=504h",
+                     "--storage.local.target-heap-size=2796202666",
                      "--web.console.libraries=/etc/prometheus/console_libraries",
                      "--web.console.templates=/etc/prometheus/consoles",
                      "--web.external-url=https://prometheus.k.dev.bitnami.net/"
                   ],
-                  "env": [
-                     {
-                        "name": "AWS_ACCESS_KEY_ID",
-                        "valueFrom": {
-                           "secretKeyRef": {
-                              "key": "access-key",
-                              "name": "aws-credentials-secret"
-                           }
-                        }
-                     },
-                     {
-                        "name": "AWS_SECRET_ACCESS_KEY",
-                        "valueFrom": {
-                           "secretKeyRef": {
-                              "key": "secret-access-key",
-                              "name": "aws-credentials-secret"
-                           }
-                        }
-                     }
-                  ],
-                  "image": "prom/prometheus:v1.4.1",
+                  "env": [ ],
+                  "image": "prom/prometheus:v1.8.2",
                   "livenessProbe": {
+                     "failureThreshold": 20,
                      "httpGet": {
                         "path": "/",
                         "port": "web"
                      },
-                     "initialDelaySeconds": 180
+                     "initialDelaySeconds": 960,
+                     "periodSeconds": 60
                   },
                   "name": "prometheus",
                   "ports": [
@@ -76,17 +58,22 @@
                      }
                   ],
                   "readinessProbe": {
+                     "failureThreshold": 20,
                      "httpGet": {
                         "path": "/",
                         "port": "web"
                      },
-                     "initialDelaySeconds": 5,
-                     "successThreshold": 2
+                     "initialDelaySeconds": 900,
+                     "periodSeconds": 60
                   },
                   "resources": {
+                     "limits": {
+                        "cpu": "500m",
+                        "memory": "4000Mi"
+                     },
                      "requests": {
                         "cpu": "500m",
-                        "memory": "1500Mi"
+                        "memory": "4000Mi"
                      }
                   },
                   "stdin": false,
@@ -124,6 +111,7 @@
                }
             ],
             "imagePullSecrets": [ ],
+            "securityContext": { },
             "terminationGracePeriodSeconds": 300,
             "volumes": [
                {

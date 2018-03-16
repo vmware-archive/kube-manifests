@@ -1,0 +1,100 @@
+{
+   "apiVersion": "extensions/v1beta1",
+   "kind": "Deployment",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "k8s-app": "kubernetes-dashboard",
+         "kubernetes.io/cluster-service": "true",
+         "name": "kubernetes-dashboard"
+      },
+      "name": "kubernetes-dashboard",
+      "namespace": "kube-system"
+   },
+   "spec": {
+      "minReadySeconds": 30,
+      "replicas": 1,
+      "revisionHistoryLimit": 10,
+      "strategy": {
+         "rollingUpdate": {
+            "maxSurge": "25%",
+            "maxUnavailable": "25%"
+         },
+         "type": "RollingUpdate"
+      },
+      "template": {
+         "metadata": {
+            "annotations": { },
+            "labels": {
+               "k8s-app": "kubernetes-dashboard",
+               "kubernetes.io/cluster-service": "true",
+               "name": "kubernetes-dashboard"
+            }
+         },
+         "spec": {
+            "containers": [
+               {
+                  "args": [
+                     "--auto-generate-certificates"
+                  ],
+                  "env": [ ],
+                  "image": "k8s.gcr.io/kubernetes-dashboard-amd64:v1.8.2",
+                  "livenessProbe": {
+                     "httpGet": {
+                        "path": "/",
+                        "port": 8443,
+                        "scheme": "HTTPS"
+                     },
+                     "initialDelaySeconds": 30,
+                     "timeoutSeconds": 30
+                  },
+                  "name": "kubernetes-dashboard",
+                  "ports": [
+                     {
+                        "containerPort": 8443,
+                        "name": "web"
+                     }
+                  ],
+                  "resources": {
+                     "limits": {
+                        "cpu": "200m",
+                        "memory": "500Mi"
+                     },
+                     "requests": {
+                        "cpu": "100m",
+                        "memory": "200Mi"
+                     }
+                  },
+                  "stdin": false,
+                  "tty": false,
+                  "volumeMounts": [
+                     {
+                        "mountPath": "/certs",
+                        "name": "kubernetes-dashboard-certs"
+                     },
+                     {
+                        "mountPath": "/tmp",
+                        "name": "tmp-volume"
+                     }
+                  ]
+               }
+            ],
+            "imagePullSecrets": [ ],
+            "serviceAccountName": "kubernetes-dashboard",
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [
+               {
+                  "name": "kubernetes-dashboard-certs",
+                  "secret": {
+                     "secretName": "kubernetes-dashboard-certs"
+                  }
+               },
+               {
+                  "emptyDir": { },
+                  "name": "tmp-volume"
+               }
+            ]
+         }
+      }
+   }
+}

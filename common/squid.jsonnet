@@ -5,6 +5,7 @@
 
 local kube = import "kube.libsonnet";
 
+
 local squid = {
   namespace:: null,
 
@@ -51,7 +52,9 @@ local squid = {
               livenessProbe: {
                 tcpSocket: { port: "proxy" },
               },
-              readinessProbe: self.livenessProbe,
+              readinessProbe: {
+                tcpSocket: container.livenessProbe.tcpSocket,
+              },
             },
           },
           volumes_+: {

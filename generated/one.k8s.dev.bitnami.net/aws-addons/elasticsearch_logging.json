@@ -1,6 +1,6 @@
 {
-   "apiVersion": "extensions/v1beta1",
-   "kind": "Deployment",
+   "apiVersion": "apps/v1beta1",
+   "kind": "StatefulSet",
    "metadata": {
       "annotations": { },
       "labels": {
@@ -11,22 +11,42 @@
       "namespace": "kube-system"
    },
    "spec": {
-      "minReadySeconds": 30,
+      "podManagementPolicy": "OrderedReady",
       "replicas": 3,
-      "revisionHistoryLimit": 10,
-      "strategy": {
-         "rollingUpdate": {
-            "maxSurge": 0,
-            "maxUnavailable": 1
-         },
-         "type": "RollingUpdate"
-      },
+      "serviceName": "elasticsearch-logging",
       "template": {
          "metadata": {
             "annotations": {
+               "podAntiAffinity": {
+                  "preferredDuringSchedulingIgnoredDuringExecution": [
+                     {
+                        "podAffinityTerm": {
+                           "labelSelector": {
+                              "matchLabels": {
+                                 "k8s-app": "elasticsearch-logging",
+                                 "name": "elasticsearch-logging"
+                              }
+                           },
+                           "topologyKey": "failure-domain.beta.kubernetes.io/zone"
+                        },
+                        "weight": 50
+                     },
+                     {
+                        "podAffinityTerm": {
+                           "labelSelector": {
+                              "matchLabels": {
+                                 "k8s-app": "elasticsearch-logging",
+                                 "name": "elasticsearch-logging"
+                              }
+                           },
+                           "topologyKey": "kubernetes.io/hostname"
+                        },
+                        "weight": 100
+                     }
+                  ]
+               },
                "prometheus.io/port": "9102",
-               "prometheus.io/scrape": "true",
-               "scheduler.alpha.kubernetes.io/affinity": "{\"podAntiAffinity\": {\"preferredDuringSchedulingIgnoredDuringExecution\": [{\"podAffinityTerm\": {\"labelSelector\": {\"matchLabels\": {\"k8s-app\": \"elasticsearch-logging\", \"name\": \"elasticsearch-logging\"}}, \"topologyKey\": \"failure-domain.beta.kubernetes.io/zone\"}, \"weight\": 50}, {\"podAffinityTerm\": {\"labelSelector\": {\"matchLabels\": {\"k8s-app\": \"elasticsearch-logging\", \"name\": \"elasticsearch-logging\"}}, \"topologyKey\": \"kubernetes.io/hostname\"}, \"weight\": 100}]}}"
+               "prometheus.io/scrape": "true"
             },
             "labels": {
                "k8s-app": "elasticsearch-logging",
@@ -52,9 +72,9 @@
                         }
                      }
                   ],
-                  "image": "gcr.io/google_containers/elasticsearch:v2.4.1-2",
+                  "image": "gcr.io/google-containers/elasticsearch:v5.5.1-1",
                   "livenessProbe": {
-                     "failureThreshold": 6,
+                     "failureThreshold": 4,
                      "httpGet": {
                         "path": "/_cluster/health?local=true",
                         "port": "http"
@@ -74,21 +94,21 @@
                      }
                   ],
                   "readinessProbe": {
-                     "failureThreshold": 6,
+                     "failureThreshold": 4,
                      "httpGet": {
                         "path": "/_cluster/health?local=true",
                         "port": "http"
                      },
-                     "initialDelaySeconds": 30,
+                     "initialDelaySeconds": 120,
                      "periodSeconds": 30,
                      "successThreshold": 2
                   },
                   "resources": {
                      "limits": {
-                        "cpu": "1000m"
+                        "cpu": "2"
                      },
                      "requests": {
-                        "cpu": "100m"
+                        "cpu": "500m"
                      }
                   },
                   "stdin": false,
@@ -96,7 +116,7 @@
                   "volumeMounts": [
                      {
                         "mountPath": "/data",
-                        "name": "storage"
+                        "name": "datadir"
                      }
                   ]
                },
@@ -112,7 +132,7 @@
                      "elasticsearch_exporter"
                   ],
                   "env": [ ],
-                  "image": "crobox/elasticsearch-exporter",
+                  "image": "justwatch/elasticsearch_exporter:1.0.1",
                   "livenessProbe": {
                      "httpGet": {
                         "path": "/",
@@ -133,13 +153,35 @@
             ],
             "imagePullSecrets": [ ],
             "terminationGracePeriodSeconds": 300,
-            "volumes": [
-               {
-                  "emptyDir": { },
-                  "name": "storage"
-               }
-            ]
+            "volumes": [ ]
          }
-      }
+      },
+      "updateStrategy": {
+         "type": "RollingUpdate"
+      },
+      "volumeClaimTemplates": [
+         {
+            "apiVersion": "v1",
+            "kind": "PersistentVolumeClaim",
+            "metadata": {
+               "annotations": { },
+               "labels": {
+                  "name": "datadir"
+               },
+               "name": "datadir",
+               "namespace": "kube-system"
+            },
+            "spec": {
+               "accessModes": [
+                  "ReadWriteOnce"
+               ],
+               "resources": {
+                  "requests": {
+                     "storage": "100Gi"
+                  }
+               }
+            }
+         }
+      ]
    }
 }

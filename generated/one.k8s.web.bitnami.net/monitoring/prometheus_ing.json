@@ -4,11 +4,11 @@
    "metadata": {
       "annotations": {
          "stable.k8s.psg.io/kcm.email": "sre@bitnami.com",
-         "stable.k8s.psg.io/kcm.enabled": "true",
          "stable.k8s.psg.io/kcm.provider": "route53"
       },
       "labels": {
-         "name": "prometheus"
+         "name": "prometheus",
+         "stable.k8s.psg.io/kcm.class": "default"
       },
       "name": "prometheus",
       "namespace": "monitoring"
@@ -16,7 +16,7 @@
    "spec": {
       "rules": [
          {
-            "host": "prometheus.k.web.bitnami.net",
+            "host": "prometheus.k.bitnami.net",
             "http": {
                "paths": [
                   {
@@ -33,7 +33,7 @@
       "tls": [
          {
             "hosts": [
-               "prometheus.k.web.bitnami.net"
+               "prometheus.k.bitnami.net"
             ],
             "secretName": "prometheus-cert"
          }

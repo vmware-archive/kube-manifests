@@ -3,7 +3,7 @@
 
 local kube = import "kube.libsonnet";
 
-local all = {
+local kube_svc_watch = {
   namespace:: null,
 
   svc_watch: kube.Deployment("kube-svc-watch") {
@@ -41,4 +41,4 @@ local all = {
   },
 };
 
-kube.List() { items_+: all }
+kube.List() { items_+: kube_svc_watch }

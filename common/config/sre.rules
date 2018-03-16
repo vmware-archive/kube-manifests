@@ -1,6 +1,6 @@
 # Constantly restarting containers
 ALERT CrashLooping
-  IF sum(rate(kube_pod_container_status_restarts[15m])) by (namespace,container) * 3600 > 0
+  IF sum(rate(kube_pod_container_status_restarts{namespace=~"kube-system|monitoring|nginx-ingress"}[15m])) by (namespace,container) * 3600 > 0
   FOR 1h
   LABELS { severity = "notice" }
   ANNOTATIONS {
@@ -33,12 +33,13 @@ ALERT MonitoringJobDown
   IF up{kubernetes_namespace="monitoring", name="prometheus"} != 1 or
      up{kubernetes_namespace="monitoring", name="alertmanager"} != 1 or
      up{kubernetes_namespace="monitoring", name="blackbox"} != 1 or
+     up{kubernetes_namespace="monitoring", name="grafana"} != 1 or
      up{kubernetes_namespace="monitoring", name="kube-state-metrics"} != 1
   FOR 10m
   LABELS { severity = "critical" }
   ANNOTATIONS {
     summary = "Required monitoring job is not running",
-    description = "{{ $labels.kubernetes_namespace }}/{{ $labels.kubernetes_name }} is down",
+    description = "{{ $labels.kubernetes_namespace }}/{{ $labels.name }} is down",
   }
 
 # This "legitimately" gets out of sync during a cluster
@@ -46,7 +47,7 @@ ALERT MonitoringJobDown
 # forgiving duration.
 ALERT MonitoringJobDownNode
   IF sum(up{kubernetes_namespace="monitoring",name="node-exporter"}) !=
-     sum(kube_node_status_ready{condition="true"})
+     sum(kube_node_status_condition{condition="Ready",status="true"})
   FOR 60m
   LABELS { severity = "warning" }
   ANNOTATIONS {
@@ -57,7 +58,7 @@ ALERT MonitoringJobDownNode
 ALERT UnderservedAZ
   IF sum(up{job="kubernetes_nodes"}) by (failure_domain_beta_kubernetes_io_zone) < 2
   FOR 1h
-  TODO: LABELS { severity = "notice" }
+  #TODO: LABELS { severity = "notice" }
   ANNOTATIONS {
     summary = "Not enough nodes in AZ",
     description = "Only {{ $value }} nodes are up in AZ {{ $labels.failure_domain_beta_kubernetes_io_zone }}",
@@ -66,9 +67,9 @@ ALERT UnderservedAZ
 # This is alerting on a cause rather than a symptom, so is likely to be
 # noisy.  May want to revisit/remove.
 ALERT NodeNotReady
-  IF max(kube_node_status_ready{condition="false"} == 1) by (node)
+  IF max(kube_node_status_condition{condition="Ready",status="false"} == 1) by (node)
   FOR 1d
-  TODO: LABELS { severity = "notice" }
+  #TODO: LABELS { severity = "notice" }
   ANNOTATIONS {
     summary = "Node not ready for a long time",
     description = "{{ $labels.node }} has been unready for more than a day",
@@ -77,8 +78,71 @@ ALERT NodeNotReady
 ALERT K8sApiUnavailable
   IF max(up{job="kubernetes_apiservers"}) != 1
   FOR 10m
-  TODO: LABELS { severity = "critical" }
+  #TODO: LABELS { severity = "critical" }
   ANNOTATIONS {
     summary = "Kubernetes API is unavailable",
     description = "Kubernetes API is not responding",
+  }
+
+ALERT Ec2RootPartitionFull
+  IF node_filesystem_avail{mountpoint="/", job="ec2_servers"} < 200e+06
+  FOR 5m
+  ANNOTATIONS {
+    summary = "Root partition full in {{ $labels.Name }}",
+    description = "Less than 200MB in / available for server {{ $labels.Name }} "
+  }
+
+ALERT Ec2VarPartitionFull
+  IF node_filesystem_avail{mountpoint="/var", job="ec2_servers"} < 200e+06
+  FOR 5m
+  ANNOTATIONS {
+    summary = "/var partition full in {{ $labels.Name }}",
+    description = "Less than 200MB in /var available for server {{ $labels.Name }} "
+  }
+
+ALERT Ec2TmpPartitionFull
+  IF node_filesystem_avail{mountpoint="/tmp", job="ec2_servers"} < 200e+06
+  FOR 5m
+  ANNOTATIONS {
+    summary = "/tmp partition full in {{ $labels.Name }}",
+    description = "Less than 200MB in /tmp available for server {{ $labels.Name }}"
+  }
+
+ALERT Ec2TankDataPartitionFull
+  IF node_filesystem_avail{mountpoint="/tank/data", job="ec2_servers"} < 1e+09
+  FOR 5m
+  ANNOTATIONS {
+    summary = "/tank/data partition full in {{ $labels.Name }}",
+    description = "Less than 1GB in /tank/data available for server {{ $labels.Name }}"
+  }
+
+ALERT Ec2TankLogPartitionFull
+  IF node_filesystem_avail{mountpoint="/tank/log", job="ec2_servers"} < 500e+06
+  FOR 5m
+  ANNOTATIONS {
+    summary = "/tank/log partition full in {{ $labels.Name }}",
+    description = "Less than 500MB in /tank/log available for server {{ $labels.Name }}"
+  }
+
+ALERT Ec2MemoryAvailable
+  IF node_memory_MemAvailable{job="ec2_servers"} < 500e+06
+  FOR 5m
+  ANNOTATIONS {
+    summary = "Low Available memory in {{ $labels.Name }}",
+    description = "Less than 500MB memory available for the last 5 minutes in server {{ $labels.Name }}"
+  }
+
+ALERT Ec2CPU_Usage
+  IF 100 - (avg by (Name) (irate(node_cpu{job="ec2_servers",mode="idle"}[5m])) * 100) > 85
+  ANNOTATIONS {
+    summary = "High CPU usage in {{ $labels.Name }}",
+    description = "CPU usage higher than 85% for more than 5m {{ $labels.Name }}"
+  }
+
+ALERT Ec2ExporterDown
+  IF up{job="ec2_servers"} != 1
+  FOR 5m
+  ANNOTATIONS {
+    summary = "EC2 Node exporter down in {{ $labels.Name }}",
+    description = "Could not contact /metrics endpoint in server {{ $labels.Name }}"
   }
