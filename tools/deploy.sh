@@ -10,7 +10,7 @@ fi
 cluster=$1
 cd ${0%/*}/..
 
-for f in $cluster/*.jsonnet; do
+for f in $(find $cluster -name '*.jsonnet' | grep -v config); do
     echo "Pushing $f"
-    ./tools/kubecfg.sh $f update
+    ./tools/kubecfg.sh update $f
 done

@@ -7,7 +7,7 @@
          "k8s-app": "heapster",
          "kubernetes.io/cluster-service": "true",
          "name": "heapster",
-         "version": "v1.2.0"
+         "version": "v1.4.2"
       },
       "name": "heapster",
       "namespace": "kube-system"
@@ -33,7 +33,7 @@
                "k8s-app": "heapster",
                "kubernetes.io/cluster-service": "true",
                "name": "heapster",
-               "version": "v1.2.0"
+               "version": "v1.4.2"
             }
          },
          "spec": {
@@ -46,7 +46,7 @@
                      "/heapster"
                   ],
                   "env": [ ],
-                  "image": "gcr.io/google_containers/heapster:v1.2.0",
+                  "image": "gcr.io/google_containers/heapster:v1.4.2",
                   "livenessProbe": {
                      "httpGet": {
                         "path": "/healthz",

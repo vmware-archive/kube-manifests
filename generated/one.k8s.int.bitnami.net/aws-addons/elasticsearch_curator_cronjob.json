@@ -1,0 +1,67 @@
+{
+   "apiVersion": "batch/v1beta1",
+   "kind": "CronJob",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "name": "elasticsearch-curator"
+      },
+      "name": "elasticsearch-curator",
+      "namespace": "kube-system"
+   },
+   "spec": {
+      "concurrencyPolicy": "Forbid",
+      "failedJobsHistoryLimit": 20,
+      "jobTemplate": {
+         "spec": {
+            "completions": 1,
+            "parallelism": 1,
+            "template": {
+               "metadata": {
+                  "annotations": { },
+                  "labels": {
+                     "name": "elasticsearch-curator"
+                  }
+               },
+               "spec": {
+                  "containers": [
+                     {
+                        "args": [
+                           "--config",
+                           "/etc/config/config.yml",
+                           "/etc/config/action_file.yml"
+                        ],
+                        "env": [ ],
+                        "image": "bobrik/curator:5.1.1",
+                        "name": "curator",
+                        "ports": [ ],
+                        "stdin": false,
+                        "tty": false,
+                        "volumeMounts": [
+                           {
+                              "mountPath": "/etc/config",
+                              "name": "config-vol",
+                              "readOnly": true
+                           }
+                        ]
+                     }
+                  ],
+                  "imagePullSecrets": [ ],
+                  "restartPolicy": "OnFailure",
+                  "terminationGracePeriodSeconds": 30,
+                  "volumes": [
+                     {
+                        "configMap": {
+                           "name": "elasticsearch-curator"
+                        },
+                        "name": "config-vol"
+                     }
+                  ]
+               }
+            }
+         }
+      },
+      "schedule": "30 0 * * *",
+      "successfulJobsHistoryLimit": 10
+   }
+}

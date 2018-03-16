@@ -4,8 +4,8 @@
    "metadata": {
       "annotations": { },
       "labels": {
+         "k8s-app": "kubernetes-dashboard",
          "kubernetes.io/cluster-service": "true",
-         "kubernetes.io/name": "Dashboard",
          "name": "kubernetes-dashboard"
       },
       "name": "kubernetes-dashboard",
@@ -14,13 +14,12 @@
    "spec": {
       "ports": [
          {
-            "port": 80,
-            "targetPort": "web"
+            "port": 443,
+            "targetPort": 8443
          }
       ],
       "selector": {
-         "kubernetes.io/cluster-service": "true",
-         "name": "kubernetes-dashboard"
+         "k8s-app": "kubernetes-dashboard"
       },
       "type": "ClusterIP"
    }

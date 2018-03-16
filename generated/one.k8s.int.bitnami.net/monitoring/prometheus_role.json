@@ -1,0 +1,38 @@
+{
+   "apiVersion": "rbac.authorization.k8s.io/v1beta1",
+   "kind": "ClusterRole",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "name": "prometheus"
+      },
+      "name": "prometheus"
+   },
+   "rules": [
+      {
+         "apiGroups": [
+            ""
+         ],
+         "resources": [
+            "nodes",
+            "nodes/proxy",
+            "services",
+            "endpoints",
+            "pods"
+         ],
+         "verbs": [
+            "get",
+            "list",
+            "watch"
+         ]
+      },
+      {
+         "nonResourceURLs": [
+            "/metrics"
+         ],
+         "verbs": [
+            "get"
+         ]
+      }
+   ]
+}

@@ -32,7 +32,8 @@
                {
                   "args": [
                      "--acme-url=https://acme-v01.api.letsencrypt.org/directory",
-                     "--data-dir=/var/lib/cert-manager"
+                     "--data-dir=/var/lib/cert-manager",
+                     "--renew-before-days=21"
                   ],
                   "env": [
                      {
@@ -54,7 +55,7 @@
                         }
                      }
                   ],
-                  "image": "palmstonegames/kube-cert-manager:0.3.1",
+                  "image": "iosphere/kube-cert-manager:5bba617",
                   "name": "kube-cert-manager",
                   "ports": [
                      {
@@ -74,16 +75,6 @@
                         "name": "data"
                      }
                   ]
-               },
-               {
-                  "args": [ ],
-                  "env": [ ],
-                  "image": "palmstonegames/kubectl-proxy:1.4.0",
-                  "name": "kubectl-proxy",
-                  "ports": [ ],
-                  "stdin": false,
-                  "tty": false,
-                  "volumeMounts": [ ]
                }
             ],
             "imagePullSecrets": [ ],

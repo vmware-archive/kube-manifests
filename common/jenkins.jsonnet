@@ -31,7 +31,9 @@ local jenkins = {
   },
 
   jenkins_ing: bitnami.Ingress("jenkins") {
-    metadata+: { namespace: $.namespace },
+    metadata+: {
+      namespace: $.namespace,
+    },
     target_svc: $.jenkins_svc,
   },
 
@@ -64,7 +66,7 @@ local jenkins = {
           containers_+: {
             master: kube.Container("master") {
               local c = self,
-              image: "jenkins:2.32.3",
+              image: "jenkins:2.89.4",
               ports_+: {
                 ui: { containerPort: 8080 },
                 slaves: { containerPort: 50000 },

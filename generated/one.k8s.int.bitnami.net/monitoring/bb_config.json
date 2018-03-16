@@ -1,0 +1,56 @@
+{
+   "modules": {
+      "dns_internal": {
+         "dns": {
+            "query_name": "endor.nami",
+            "query_type": "A",
+            "valid_rcodes": [
+               "NOERROR"
+            ],
+            "validate_answer_rrs": {
+               "fail_if_not_matches_regexp": [
+                  "endor\\.nami\\.\\t[0-9]+\\tIN\\tA\\t23\\.21\\.148\\.169"
+               ]
+            }
+         },
+         "prober": "dns",
+         "timeout": "5s"
+      },
+      "dns_public": {
+         "dns": {
+            "query_name": "www.google.com",
+            "query_type": "A",
+            "valid_rcodes": [
+               "NOERROR"
+            ]
+         },
+         "prober": "dns",
+         "timeout": "5s"
+      },
+      "http_2xx": {
+         "http": {
+            "fail_if_not_ssl": false,
+            "fail_if_ssl": false,
+            "method": "GET",
+            "no_follow_redirects": false,
+            "preferred_ip_protocol": "ip4",
+            "tls_config": {
+               "insecure_skip_verify": true
+            }
+         },
+         "prober": "http",
+         "timeout": "5s"
+      },
+      "ssh": {
+         "prober": "tcp",
+         "tcp": {
+            "query_response": [
+               {
+                  "expect": "^SSH-2.0-"
+               }
+            ]
+         },
+         "timeout": "5s"
+      }
+   }
+}

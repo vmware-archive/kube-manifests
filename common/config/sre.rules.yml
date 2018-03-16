@@ -1,0 +1,121 @@
+groups:
+- name: sre.rules
+  rules:
+  - alert: CrashLooping
+    expr: sum(rate(kube_pod_container_status_restarts{namespace=~"kube-system|monitoring|nginx-ingress"}[15m]))
+      BY (namespace, container) * 3600 > 0
+    for: 1h
+    labels:
+      severity: notice
+    annotations:
+      description: '{{ $labels.namespace }}/{{ $labels.container }} is restarting
+        {{ $value }} times per hour'
+      summary: Frequently restarting containers
+  - alert: PrometheusBadConfig
+    expr: prometheus_config_last_reload_successful{kubernetes_namespace="monitoring"}
+      == 0
+    for: 10m
+    labels:
+      severity: critical
+    annotations:
+      description: Config error with prometheus, see container logs
+      summary: Prometheus failed to reload config
+  - alert: AlertmanagerBadConfig
+    expr: alertmanager_config_last_reload_successful{kubernetes_namespace="monitoring"}
+      == 0
+    for: 10m
+    labels:
+      severity: critical
+    annotations:
+      description: Config error with alertmanager, see container logs
+      summary: Alertmanager failed to reload config
+  - alert: MonitoringJobDown
+    expr: up{kubernetes_namespace="monitoring",name="prometheus"} != 1 or up{kubernetes_namespace="monitoring",name="alertmanager"}
+      != 1 or up{kubernetes_namespace="monitoring",name="blackbox"} != 1 or up{kubernetes_namespace="monitoring",name="grafana"}
+      != 1 or up{kubernetes_namespace="monitoring",name="kube-state-metrics"} != 1
+    for: 10m
+    labels:
+      severity: critical
+    annotations:
+      description: '{{ $labels.kubernetes_namespace }}/{{ $labels.name }} is down'
+      summary: Required monitoring job is not running
+  - alert: MonitoringJobDownNode
+    expr: sum(up{kubernetes_namespace="monitoring",name="node-exporter"}) != sum(kube_node_status_condition{condition="Ready",status="true"})
+    for: 1h
+    labels:
+      severity: warning
+    annotations:
+      description: node-exporter is down
+      summary: Node-level monitoring job is not running
+  - alert: UnderservedAZ
+    expr: sum(up{job="kubernetes_nodes"}) BY (failure_domain_beta_kubernetes_io_zone)
+      < 2
+    for: 1h
+    annotations:
+      description: Only {{ $value }} nodes are up in AZ {{ $labels.failure_domain_beta_kubernetes_io_zone
+        }}
+      summary: Not enough nodes in AZ
+  - alert: NodeNotReady
+    expr: max(kube_node_status_condition{condition="Ready",status="false"} == 1) BY
+      (node)
+    for: 1d
+    annotations:
+      description: '{{ $labels.node }} has been unready for more than a day'
+      summary: Node not ready for a long time
+  - alert: K8sApiUnavailable
+    expr: max(up{job="kubernetes_apiservers"}) != 1
+    for: 10m
+    annotations:
+      description: Kubernetes API is not responding
+      summary: Kubernetes API is unavailable
+  - alert: Ec2RootPartitionFull
+    expr: node_filesystem_avail{job="ec2_servers",mountpoint="/"} < 2e+08
+    for: 5m
+    annotations:
+      description: 'Less than 200MB in / available for server {{ $labels.Name }} '
+      summary: Root partition full in {{ $labels.Name }}
+  - alert: Ec2VarPartitionFull
+    expr: node_filesystem_avail{job="ec2_servers",mountpoint="/var"} < 2e+08
+    for: 5m
+    annotations:
+      description: 'Less than 200MB in /var available for server {{ $labels.Name }} '
+      summary: /var partition full in {{ $labels.Name }}
+  - alert: Ec2TmpPartitionFull
+    expr: node_filesystem_avail{job="ec2_servers",mountpoint="/tmp"} < 2e+08
+    for: 5m
+    annotations:
+      description: Less than 200MB in /tmp available for server {{ $labels.Name }}
+      summary: /tmp partition full in {{ $labels.Name }}
+  - alert: Ec2TankDataPartitionFull
+    expr: node_filesystem_avail{job="ec2_servers",mountpoint="/tank/data"} < 1e+09
+    for: 5m
+    annotations:
+      description: Less than 1GB in /tank/data available for server {{ $labels.Name
+        }}
+      summary: /tank/data partition full in {{ $labels.Name }}
+  - alert: Ec2TankLogPartitionFull
+    expr: node_filesystem_avail{job="ec2_servers",mountpoint="/tank/log"} < 5e+08
+    for: 5m
+    annotations:
+      description: Less than 500MB in /tank/log available for server {{ $labels.Name
+        }}
+      summary: /tank/log partition full in {{ $labels.Name }}
+  - alert: Ec2MemoryAvailable
+    expr: node_memory_MemAvailable{job="ec2_servers"} < 5e+08
+    for: 5m
+    annotations:
+      description: Less than 500MB memory available for the last 5 minutes in server
+        {{ $labels.Name }}
+      summary: Low Available memory in {{ $labels.Name }}
+  - alert: Ec2CPU_Usage
+    expr: 100 - (avg(irate(node_cpu{job="ec2_servers",mode="idle"}[5m])) BY (Name)
+      * 100) > 85
+    annotations:
+      description: CPU usage higher than 85% for more than 5m {{ $labels.Name }}
+      summary: High CPU usage in {{ $labels.Name }}
+  - alert: Ec2ExporterDown
+    expr: up{job="ec2_servers"} != 1
+    for: 5m
+    annotations:
+      description: Could not contact /metrics endpoint in server {{ $labels.Name }}
+      summary: EC2 Node exporter down in {{ $labels.Name }}

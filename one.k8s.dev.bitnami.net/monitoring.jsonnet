@@ -9,10 +9,11 @@ local all = prometheus.items_ + ksw.items_ {
   am_config: import "config/alertmanager.jsonnet",
   bb_config: import "config/blackbox.jsonnet",
 
+  prometheus_ns: kube.Namespace($.namespace),
+
   prometheus_config+: {
     data+: {
       "sre.rules": importstr "../common/config/sre.rules",
-      "gus-testing.rules": importstr "config/gus-testing.rules",
     },
   },
 

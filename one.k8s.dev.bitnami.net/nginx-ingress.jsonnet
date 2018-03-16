@@ -1,11 +1,18 @@
 local kube = import "kube.libsonnet";
-local ingress = (import "../common/nginx-ingress.jsonnet").items_;
-local kcm = (import "../common/kube-cert-manager.jsonnet").items_;
+local ingress = import "../common/nginx-ingress.jsonnet";
 
-local all = ingress + kcm {
-  namespace: "nginx-ingress",
+ingress {
+  items_+: {
+    namespace: "nginx-ingress",
 
-  nginx_ingress_ns: kube.Namespace($.namespace),
-};
+    nginx_svc+: {
+      metadata+: {
+        annotations+: {
+          "service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout": "1200",
+        },
+      },
+    },
 
-kube.List() { items_+: all }
+
+  },
+}

@@ -1,0 +1,16 @@
+{
+   "apiVersion": "v1",
+   "data": {
+      "action_file.yml": "---\n# Remember, leave a key empty if there is no value.  None will be a string,\n# not a Python \"NoneType\"\n#\n# Also remember that all examples have 'disable_action' set to True.  If you\n# want to use this action as a template, be sure to set this to False after\n# copying it.\nactions:\n  1:\n    action: delete_indices\n    description: \"Clean up ES by deleting old indices\"\n    options:\n      timeout_override:\n      continue_if_exception: False\n      disable_action: False\n      ignore_empty_list: True\n    filters:\n    - filtertype: age\n      source: name\n      direction: older\n      timestring: '%Y.%m.%d'\n      unit: days\n      unit_count: 30\n      field:\n      stats_result:\n      epoch:\n      exclude: False\n",
+      "config.yml": "---\n# Remember, leave a key empty if there is no value.  None will be a string,\n# not a Python \"NoneType\"\nclient:\n  hosts:\n    - elasticsearch-logging\n  port: 9200\n  url_prefix:\n  use_ssl: False\n  certificate:\n  client_cert:\n  client_key:\n  ssl_no_validate: False\n  http_auth:\n  timeout: 30\n  master_only: False\n\nlogging:\n  loglevel: INFO\n  logfile:\n  logformat: default\n  blacklist: ['elasticsearch', 'urllib3']\n"
+   },
+   "kind": "ConfigMap",
+   "metadata": {
+      "annotations": { },
+      "labels": {
+         "name": "elasticsearch-curator"
+      },
+      "name": "elasticsearch-curator",
+      "namespace": "kube-system"
+   }
+}

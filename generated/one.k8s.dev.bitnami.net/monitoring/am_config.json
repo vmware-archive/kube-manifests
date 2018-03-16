@@ -1,0 +1,72 @@
+{
+   "global": {
+      "resolve_timeout": "5m",
+      "slack_api_url": "https://hooks.slack.com/services/<redacted>",
+      "smtp_from": "sre+alertmanager@bitnami.com",
+      "smtp_smarthost": "aspmx.l.google.com"
+   },
+   "inhibit_rules": [
+      {
+         "equal": [
+            "alertname",
+            "cluster",
+            "service"
+         ],
+         "source_match": {
+            "severity": "critical"
+         },
+         "target_match": {
+            "severity": "warning"
+         }
+      }
+   ],
+   "receivers": [
+      {
+         "name": "default",
+         "slack_configs": [
+            {
+               "channel": "#alert-testing",
+               "send_resolved": true,
+               "text": "Cluster: one.k8s.dev.bitnami.net\n{{ range .Alerts }}[{{ .Status | toUpper }}] {{ .Annotations.description }}\n{{ end }}",
+               "title": "{{ with $alert := index .Alerts 0 }}{{ $alert.Annotations.summary }}{{ end }}"
+            }
+         ]
+      },
+      {
+         "email_configs": [
+            {
+               "to": "sre+alerts@example.com"
+            }
+         ],
+         "name": "email"
+      },
+      {
+         "name": "slack",
+         "slack_configs": [
+            {
+               "channel": "{{ .GroupLabels.slack_channel }}",
+               "send_resolved": true,
+               "text": "Cluster: one.k8s.dev.bitnami.net\n{{ range .Alerts }}[{{ .Status | toUpper }}] {{ .Annotations.description }}\n{{ end }}",
+               "title": "{{ with $alert := index .Alerts 0 }}{{ $alert.Annotations.summary }}{{ end }}"
+            }
+         ]
+      }
+   ],
+   "route": {
+      "group_by": [
+         "alertmanager",
+         "alertname",
+         "cluster",
+         "notify_to",
+         "slack_channel"
+      ],
+      "group_interval": "5m",
+      "group_wait": "1m",
+      "receiver": "default",
+      "repeat_interval": "6h",
+      "routes": [ ]
+   },
+   "templates": [
+      "/etc/alertmanager-templates/*.tmpl"
+   ]
+}

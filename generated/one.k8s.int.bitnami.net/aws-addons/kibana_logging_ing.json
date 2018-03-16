@@ -4,11 +4,11 @@
    "metadata": {
       "annotations": {
          "stable.k8s.psg.io/kcm.email": "sre@bitnami.com",
-         "stable.k8s.psg.io/kcm.enabled": "true",
          "stable.k8s.psg.io/kcm.provider": "route53"
       },
       "labels": {
-         "name": "kibana-logging"
+         "name": "kibana-logging",
+         "stable.k8s.psg.io/kcm.class": "default"
       },
       "name": "kibana-logging",
       "namespace": "kube-system"
